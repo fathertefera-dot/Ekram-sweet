@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Cake, Phone, Mail, MapPin, Clock, Facebook, Send } from "lucide-react";
+import { ShoppingBag, Phone, Mail, MapPin, Clock, Facebook, Send } from "lucide-react";
 import { getSettings } from "@/actions/settings";
 import { useEffect, useState } from "react";
 import type { Settings } from "@/types";
@@ -17,7 +17,7 @@ export default function Footer() {
     loadSettings();
   }, []);
 
-  const businessName = settings?.business_name || "Iku Sweet Cake";
+  const businessName = settings?.business_name || "Ekram Sweet";
   const phone = settings?.phone;
   const email = settings?.support_email;
   const address = settings?.address;
@@ -27,16 +27,16 @@ export default function Footer() {
 
   return (
     <footer className="border-t bg-stone-50">
-      <div className="container mx-auto px-4 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+      <div className="container mx-auto px-4 py-8 sm:py-12">
+        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 gap-6 sm:gap-8">
           {/* Brand */}
-          <div className="space-y-4">
+          <div className="col-span-2 sm:col-span-2 md:col-span-1 space-y-3 sm:space-y-4">
             <Link href="/" className="flex items-center gap-2">
-              <Cake className="h-6 w-6 text-[#c97d4a]" />
-              <span className="text-lg font-bold">{businessName}</span>
+              <ShoppingBag className="h-5 w-5 sm:h-6 sm:w-6 text-[#c97d4a]" />
+              <span className="text-base sm:text-lg font-bold">{businessName}</span>
             </Link>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              Freshly baked cakes made with love and the finest ingredients. Order online for delivery or pickup.
+            <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+              Premium quality products made with love. Order online for delivery or pickup.
             </p>
             <div className="flex items-center gap-3">
               {telegram && (
@@ -44,9 +44,9 @@ export default function Footer() {
                   href={telegram.startsWith("http") ? telegram : `https://t.me/${telegram.replace("@", "")}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="h-9 w-9 flex items-center justify-center rounded-full bg-[#c97d4a]/10 text-[#c97d4a] hover:bg-[#c97d4a] hover:text-white transition-colors"
+                  className="h-8 w-8 sm:h-9 sm:w-9 flex items-center justify-center rounded-full bg-[#c97d4a]/10 text-[#c97d4a] hover:bg-[#c97d4a] hover:text-white transition-colors"
                 >
-                  <Send className="h-4 w-4" />
+                  <Send className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 </a>
               )}
               {facebook && (
@@ -54,29 +54,28 @@ export default function Footer() {
                   href={facebook.startsWith("http") ? facebook : `https://facebook.com/${facebook}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="h-9 w-9 flex items-center justify-center rounded-full bg-[#c97d4a]/10 text-[#c97d4a] hover:bg-[#c97d4a] hover:text-white transition-colors"
+                  className="h-8 w-8 sm:h-9 sm:w-9 flex items-center justify-center rounded-full bg-[#c97d4a]/10 text-[#c97d4a] hover:bg-[#c97d4a] hover:text-white transition-colors"
                 >
-                  <Facebook className="h-4 w-4" />
+                  <Facebook className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 </a>
               )}
             </div>
           </div>
 
           {/* Quick Links */}
-          <div className="space-y-4">
-            <h3 className="font-semibold">Quick Links</h3>
-            <ul className="space-y-2">
+          <div className="space-y-3 sm:space-y-4">
+            <h3 className="font-semibold text-sm sm:text-base">Quick Links</h3>
+            <ul className="space-y-1.5 sm:space-y-2">
               {[
                 { href: "/", label: "Home" },
                 { href: "/products", label: "Products" },
-                { href: "/about", label: "About Us" },
                 { href: "/contact", label: "Contact" },
                 { href: "/track-order", label: "Track Order" },
               ].map((link) => (
                 <li key={link.href}>
                   <Link
                     href={link.href}
-                    className="text-sm text-muted-foreground hover:text-[#c97d4a] transition-colors"
+                    className="text-xs sm:text-sm text-muted-foreground hover:text-[#c97d4a] transition-colors"
                   >
                     {link.label}
                   </Link>
@@ -86,30 +85,30 @@ export default function Footer() {
           </div>
 
           {/* Contact Info */}
-          <div className="space-y-4">
-            <h3 className="font-semibold">Contact Us</h3>
-            <ul className="space-y-3">
+          <div className="space-y-3 sm:space-y-4">
+            <h3 className="font-semibold text-sm sm:text-base">Contact Us</h3>
+            <ul className="space-y-2 sm:space-y-3">
               {phone && (
-                <li className="flex items-start gap-2 text-sm text-muted-foreground">
-                  <Phone className="h-4 w-4 mt-0.5 text-[#c97d4a]" />
+                <li className="flex items-start gap-2 text-xs sm:text-sm text-muted-foreground">
+                  <Phone className="h-3.5 w-3.5 sm:h-4 sm:w-4 mt-0.5 text-[#c97d4a] shrink-0" />
                   <span>{phone}</span>
                 </li>
               )}
               {email && (
-                <li className="flex items-start gap-2 text-sm text-muted-foreground">
-                  <Mail className="h-4 w-4 mt-0.5 text-[#c97d4a]" />
-                  <span>{email}</span>
+                <li className="flex items-start gap-2 text-xs sm:text-sm text-muted-foreground">
+                  <Mail className="h-3.5 w-3.5 sm:h-4 sm:w-4 mt-0.5 text-[#c97d4a] shrink-0" />
+                  <span className="break-all">{email}</span>
                 </li>
               )}
               {address && (
-                <li className="flex items-start gap-2 text-sm text-muted-foreground">
-                  <MapPin className="h-4 w-4 mt-0.5 text-[#c97d4a]" />
+                <li className="flex items-start gap-2 text-xs sm:text-sm text-muted-foreground">
+                  <MapPin className="h-3.5 w-3.5 sm:h-4 sm:w-4 mt-0.5 text-[#c97d4a] shrink-0" />
                   <span>{address}</span>
                 </li>
               )}
               {hours && (
-                <li className="flex items-start gap-2 text-sm text-muted-foreground">
-                  <Clock className="h-4 w-4 mt-0.5 text-[#c97d4a]" />
+                <li className="flex items-start gap-2 text-xs sm:text-sm text-muted-foreground">
+                  <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4 mt-0.5 text-[#c97d4a] shrink-0" />
                   <span>{hours}</span>
                 </li>
               )}
@@ -118,8 +117,8 @@ export default function Footer() {
         </div>
 
         {/* Bottom Bar */}
-        <div className="mt-10 pt-6 border-t text-center">
-          <p className="text-sm text-muted-foreground">
+        <div className="mt-8 sm:mt-10 pt-4 sm:pt-6 border-t text-center">
+          <p className="text-xs sm:text-sm text-muted-foreground">
             &copy; {new Date().getFullYear()} {businessName}. All rights reserved.
           </p>
         </div>

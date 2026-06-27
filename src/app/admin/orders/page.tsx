@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Search, Eye, XCircle, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +34,7 @@ export default function AdminOrdersPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [currentPage, setCurrentPage] = useState(1);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState(""); // 🔧 Debounced value
   const [statusFilter, setStatusFilter] = useState<OrderStatus | "">("");
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -43,13 +44,21 @@ export default function AdminOrdersPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const { toast } = useToast();
 
+  // 🔧 Debounce effect: update debouncedSearch 400ms after user stops typing
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [search]);
+
   const loadOrders = useCallback(async () => {
     setLoading(true);
     try {
       const result = await getAllOrders({
         page: currentPage,
         limit: 10,
-        search: search || undefined,
+        search: debouncedSearch || undefined,
         status: (statusFilter as OrderStatus) || undefined,
       });
       setOrders(result.orders);
@@ -65,7 +74,7 @@ export default function AdminOrdersPage() {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, search, statusFilter, toast]);
+  }, [currentPage, debouncedSearch, statusFilter, toast]);
 
   useEffect(() => {
     loadOrders();
@@ -129,7 +138,10 @@ export default function AdminOrdersPage() {
           <Input
             placeholder="Search orders..."
             value={search}
-            onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setCurrentPage(1); // reset to first page on new search
+            }}
             className="pl-10"
           />
         </div>
@@ -151,7 +163,7 @@ export default function AdminOrdersPage() {
         </Select>
       </div>
 
-      {/* Orders Table */}
+      {/* Orders Table — rest of the component unchanged */}
       <Card className="border-0 shadow-md">
         <CardContent className="p-0">
           {loading ? (
@@ -254,7 +266,7 @@ export default function AdminOrdersPage() {
         </CardContent>
       </Card>
 
-      {/* Order Detail Dialog */}
+      {/* Order Detail Dialog — unchanged */}
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -376,7 +388,7 @@ export default function AdminOrdersPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Cancel Dialog */}
+      {/* Cancel Dialog — unchanged */}
       <Dialog open={cancelOpen} onOpenChange={setCancelOpen}>
         <DialogContent>
           <DialogHeader>

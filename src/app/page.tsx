@@ -80,7 +80,7 @@ export default async function HomePage() {
         )}
       </section>
 
-      {/* Categories Section - Clean & Distinct */}
+      {/* Categories Section */}
       <section id="categories" className="py-12 md:py-20 bg-stone-50/50">
         <div className="container mx-auto px-4">
           <div className="text-center mb-8 md:mb-12">
@@ -124,7 +124,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Featured Products Section - Shoppable & Clear */}
+      {/* Featured Products Section */}
       <section className="py-12 md:py-20 bg-background">
         <div className="container mx-auto px-4">
           <div className="text-center mb-8 md:mb-12">
@@ -158,21 +158,21 @@ export default async function HomePage() {
                       </div>
                     )}
 
-                    {/* ✅ ባጆች የሚቀመጡበት ቦታ ተስተካክሏል (አንድ ላይ በተጠቀለለ እና አይጋጩም) */}
-                    <div className="absolute top-3 left-3 flex flex-wrap gap-1.5">
-                      {product.availability === "pre-order" && (
-                        <Badge className="bg-amber-500 text-white text-xs px-2 py-0.5 rounded-full shadow-sm">
-                          Pre-Order
-                        </Badge>
-                      )}
-                      <Badge variant="secondary" className="text-xs font-normal px-2 py-0.5 shadow-sm">
-                        {product.category?.name}
+                    {/* Pre-Order Badge ብቻውን ከላይ በግራ ይቀመጣል */}
+                    {product.availability === "pre-order" && (
+                      <Badge className="absolute top-3 left-3 bg-amber-500 text-white text-xs px-2 py-0.5 rounded-full shadow-sm">
+                        Pre-Order
                       </Badge>
-                    </div>
+                    )}
                   </div>
 
                   <CardContent className="p-4">
                     <div className="space-y-2">
+                      {/* Category Badge አሁን ከምርት ስም በታች ይቀመጣል (ከላይ አይደለም) */}
+                      <Badge variant="secondary" className="text-xs font-normal px-2 py-0.5 shadow-sm">
+                        {product.category?.name}
+                      </Badge>
+                      
                       <h3 className="font-medium text-sm md:text-base line-clamp-1 group-hover:text-[#c97d4a] transition-colors">
                         {product.name}
                       </h3>

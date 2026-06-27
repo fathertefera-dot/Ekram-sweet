@@ -1,343 +1,146 @@
-"use client";
-
-import { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import {
-  ShoppingCart,
-  Menu,
-  ShoppingBag,
-  LogOut,
-  LayoutDashboard,
-  Home,
-  Layers,
-  Truck,
-  Cake,
-  Info,
-  Settings,
-  LogIn,
-  Phone,
-} from "lucide-react";
+import Image from "next/image";
+import { ArrowRight, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Sheet,
-  SheetContent,
-  SheetTrigger,
-} from "@/components/ui/sheet";
-import { getCartCount } from "@/actions/cart";
-import { getCurrentUser, logout, isAdmin } from "@/actions/auth";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import PublicLayout from "./public-layout";
+import { getBanners } from "@/actions/banners";
+import { getFeaturedProducts } from "@/actions/products";
+import { getCategories } from "@/actions/categories";
+import { getSettings } from "@/actions/settings";
+import { formatPrice } from "@/lib/utils";
+// ✅ አዲሱን ፋይል እንጠቀማለን (ምንም "use client" የለም)
+import FeaturedProductsWithQuickView from "@/components/public/featured-products-with-quickview";
 
-export default function Navbar() {
-  const router = useRouter();
-  const pathname = usePathname();
-  const [cartCount, setCartCount] = useState(0);
-  const [user, setUser] = useState<Awaited<ReturnType<typeof getCurrentUser>>>(null);
-  const [admin, setAdmin] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [isCategoriesActive, setIsCategoriesActive] = useState(false);
+export default async function HomePage() {
+  const [banners, featuredProducts, categories, settings] = await Promise.all([
+    getBanners(),
+    getFeaturedProducts(),
+    getCategories(),
+    getSettings(),
+  ]);
 
-  useEffect(() => {
-    async function loadData() {
-      const count = await getCartCount();
-      setCartCount(count);
-      const currentUser = await getCurrentUser();
-      setUser(currentUser);
-      if (currentUser) {
-        const adminStatus = await isAdmin();
-        setAdmin(adminStatus);
-      }
-    }
-    loadData();
-  }, [pathname]);
-
-  // Categories scroll & active state
-  useEffect(() => {
-    if (pathname === "/") {
-      const navigateToCategories = sessionStorage.getItem("navigateToCategories");
-      if (navigateToCategories === "true") {
-        setIsCategoriesActive(true);
-        sessionStorage.removeItem("navigateToCategories");
-        setTimeout(() => {
-          document.getElementById("categories")?.scrollIntoView({ behavior: "smooth" });
-        }, 300);
-      } else {
-        setIsCategoriesActive(window.location.hash === "#categories");
-      }
-    } else {
-      setIsCategoriesActive(false);
-    }
-  }, [pathname]);
-
-  const handleCategoriesClick = () => {
-    setMobileMenuOpen(false);
-    setIsCategoriesActive(true);
-    sessionStorage.setItem("navigateToCategories", "true");
-    router.push("/");
-  };
-
-  // Menu items grouped
-  const shopItems = [
-    { href: "/", label: "Home", icon: Home },
-    { href: "/#categories", label: "Categories", icon: Layers, onClick: handleCategoriesClick },
-    { href: "/products", label: "Products", icon: Cake },
-    { href: "/about", label: "About", icon: Info },
-  ];
-
-  const orderItems = [
-    { href: "/cart", label: "Cart", icon: ShoppingCart },
-    { href: "/track-order", label: "Track Order", icon: Truck },
-  ];
-
-  const accountItems = user
-    ? [
-        { href: "/admin/settings", label: "Settings", icon: Settings },
-        { href: "#", label: "Logout", icon: LogOut, onClick: logout },
-      ]
-    : [{ href: "/login", label: "Login / Register", icon: LogIn }];
-
-  const desktopNavLinks = [
-    { href: "/", label: "Home" },
-    { href: "/products", label: "Products" },
-    { href: "/track-order", label: "Track Order" },
-    { href: "/contact", label: "Contact" },
-  ];
-
-  const renderNavItem = (item: any, isActive: boolean, isButton = false) => {
-    const commonClasses = `flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-      isActive
-        ? "bg-[#c97d4a]/10 text-[#c97d4a] border-l-4 border-[#c97d4a]"
-        : "text-muted-foreground hover:bg-muted hover:text-foreground"
-    }`;
-    if (isButton) {
-      return (
-        <button
-          key={item.label}
-          onClick={item.onClick}
-          className={commonClasses}
-        >
-          <item.icon className="h-5 w-5" />
-          {item.label}
-        </button>
-      );
-    }
-    return (
-      <Link
-        key={item.href}
-        href={item.href}
-        onClick={() => setMobileMenuOpen(false)}
-        className={commonClasses}
-      >
-        <item.icon className="h-5 w-5" />
-        {item.label}
-      </Link>
-    );
-  };
+  const heroBanner = banners[0];
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container mx-auto flex h-14 sm:h-16 items-center justify-between px-4">
-        {/* Left section: Mobile menu + logo */}
-        <div className="flex items-center gap-2">
-          <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-            <SheetTrigger asChild>
-              <button
-                className="md:hidden p-2 -ml-2 rounded-md hover:bg-muted touch-manipulation"
-                aria-label="Toggle menu"
-              >
-                <Menu className="h-5 w-5" />
-              </button>
-            </SheetTrigger>
-
-            <SheetContent
-              side="left"
-              className="w-[300px] sm:w-[340px] shadow-2xl border-0 bg-background p-0"
-            >
-              {/* Sidebar Header */}
-              <div className="bg-gradient-to-r from-[#c97d4a] to-[#e8a06b] p-6">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm">
-                    <ShoppingBag className="h-6 w-6 text-white" />
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-bold text-white">Ekram Sweet</h2>
-                    <p className="text-sm text-white/80">Fresh Cakes & Desserts</p>
+    <PublicLayout>
+      {/* Hero Section */}
+      <section className="relative h-[380px] sm:h-[460px] md:h-[560px] overflow-hidden">
+        {heroBanner ? (
+          <>
+            <Image
+              src={heroBanner.image}
+              alt={heroBanner.title}
+              fill
+              className="object-cover"
+              priority
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/45 to-transparent" />
+            <div className="absolute inset-0 flex items-center">
+              <div className="container mx-auto px-4">
+                <div className="max-w-sm sm:max-w-lg space-y-4 sm:space-y-6">
+                  <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-tight">
+                    {heroBanner.title}
+                  </h1>
+                  <p className="text-sm sm:text-base md:text-lg text-white/90">
+                    Premium quality products, crafted with love and delivered to your doorstep.
+                  </p>
+                  <div className="flex flex-wrap gap-3">
+                    <Link href="/products">
+                      <Button size="default" className="bg-[#c97d4a] hover:bg-[#b56d3f] text-white gap-2 text-sm sm:text-base">
+                        Shop Now <ArrowRight className="h-4 w-4" />
+                      </Button>
+                    </Link>
                   </div>
                 </div>
               </div>
+            </div>
+          </>
+        ) : (
+          <div className="absolute inset-0 bg-gradient-to-br from-[#c97d4a] to-[#8b5e3c]">
+            <div className="absolute inset-0 flex items-center">
+              <div className="container mx-auto px-4">
+                <div className="max-w-sm sm:max-w-xl space-y-4 sm:space-y-6">
+                  <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-tight">
+                    Delicious Treats for Every Occasion
+                  </h1>
+                  <p className="text-sm sm:text-base md:text-lg text-white/90">
+                    Premium quality products, crafted with love and delivered to your doorstep.
+                  </p>
+                  <div className="flex flex-wrap gap-3">
+                    <Link href="/products">
+                      <Button size="default" className="bg-white text-[#c97d4a] hover:bg-white/90 gap-2">
+                        Shop Now <ArrowRight className="h-4 w-4" />
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </section>
 
-              {/* Quick Actions Cards */}
-              <div className="grid grid-cols-2 gap-3 p-4">
-                <Link
-                  href="/products"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex flex-col items-center justify-center rounded-xl border bg-card p-4 hover:bg-muted/50 transition-all duration-200"
-                >
-                  <Cake className="h-6 w-6 text-[#c97d4a]" />
-                  <span className="mt-1 text-sm font-medium">Products</span>
-                </Link>
-                <Link
-                  href="/cart"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="relative flex flex-col items-center justify-center rounded-xl border bg-card p-4 hover:bg-muted/50 transition-all duration-200"
-                >
-                  <ShoppingCart className="h-6 w-6 text-[#c97d4a]" />
-                  <span className="mt-1 text-sm font-medium">Cart</span>
-                  {cartCount > 0 && (
-                    <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#c97d4a] text-[10px] font-medium text-white">
-                      {cartCount}
+      {/* Categories Section */}
+      <section id="categories" className="py-16 md:py-24 bg-gradient-to-b from-background to-stone-50">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12 md:mb-16">
+            <span className="inline-block text-xs font-semibold uppercase tracking-widest text-[#c97d4a] bg-[#c97d4a]/10 px-4 py-1.5 rounded-full mb-4">
+              Browse Categories
+            </span>
+            <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-4">
+              Find Your Favorite <span className="text-[#c97d4a]">Sweet Treats</span>
+            </h2>
+            <p className="text-sm md:text-base text-muted-foreground max-w-2xl mx-auto">
+              Handcrafted cakes, desserts, and bakery products prepared with premium ingredients.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
+            {categories.map((category) => (
+              <Link key={category.id} href={`/products?category=${category.id}`} className="group block">
+                <Card className="relative overflow-hidden rounded-3xl border-0 shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-2">
+                  <div className="aspect-[4/3] relative overflow-hidden bg-muted/20">
+                    <Image src={category.image || "/images/placeholder.jpg"} alt={category.name} fill className="object-cover transition-transform duration-700 group-hover:scale-110" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
+                  </div>
+                  <CardContent className="absolute inset-0 flex flex-col justify-end p-6 md:p-8">
+                    <h3 className="text-white text-xl md:text-2xl font-semibold mb-2">{category.name}</h3>
+                    <span className="flex items-center text-sm text-white/80 transition-colors group-hover:text-white">
+                      Explore Collection <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
                     </span>
-                  )}
-                </Link>
-              </div>
-
-              {/* Navigation Groups */}
-              <div className="flex-1 overflow-y-auto px-4 py-2 space-y-6">
-                {/* SHOP */}
-                <div>
-                  <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Shop
-                  </h3>
-                  <div className="space-y-1">
-                    {shopItems.map((item) => {
-                      const isActive =
-                        item.label === "Categories"
-                          ? isCategoriesActive
-                          : pathname === item.href;
-                      if (item.onClick) {
-                        return renderNavItem(item, isActive, true);
-                      }
-                      return renderNavItem(item, isActive);
-                    })}
-                  </div>
-                </div>
-
-                {/* ORDERS */}
-                <div>
-                  <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Orders
-                  </h3>
-                  <div className="space-y-1">
-                    {orderItems.map((item) => {
-                      const isActive = pathname === item.href;
-                      return renderNavItem(item, isActive);
-                    })}
-                  </div>
-                </div>
-
-                {/* ACCOUNT */}
-                <div>
-                  <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Account
-                  </h3>
-                  <div className="space-y-1">
-                    {accountItems.map((item) => {
-                      const isActive = pathname === item.href;
-                      if (item.onClick) {
-                        return renderNavItem(item, isActive, true);
-                      }
-                      return renderNavItem(item, isActive);
-                    })}
-                  </div>
-                </div>
-              </div>
-
-              {/* Footer */}
-              <div className="border-t p-4 space-y-3">
-                <Button
-                  className="w-full bg-[#c97d4a] hover:bg-[#b56d3f]"
-                  onClick={() => {
-                    window.location.href = "tel:+251911234567";
-                  }}
-                >
-                  <Phone className="mr-2 h-4 w-4" />
-                  Order via Phone
-                </Button>
-                <p className="text-center text-xs text-muted-foreground">
-                  Ekram Sweet v1.0
-                </p>
-              </div>
-            </SheetContent>
-          </Sheet>
-
-          {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 shrink-0">
-            <ShoppingBag className="h-6 w-6 sm:h-7 sm:w-7 text-[#c97d4a]" />
-            <span className="text-base sm:text-xl font-bold tracking-tight">Ekram Sweet</span>
-          </Link>
+                  </CardContent>
+                </Card>
+              </Link>
+            ))}
+          </div>
         </div>
+      </section>
 
-        {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center gap-1">
-          {desktopNavLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className={`px-3 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
-                pathname === link.href
-                  ? "text-[#c97d4a] bg-[#c97d4a]/10"
-                  : "text-foreground/80 hover:text-foreground hover:bg-muted"
-              }`}
-            >
-              {link.label}
+      {/* Featured Products Section with Quick View */}
+      <section className="py-16 md:py-24 bg-gradient-to-b from-stone-50 to-background">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12 md:mb-16">
+            <span className="inline-block text-xs font-semibold uppercase tracking-widest text-[#c97d4a] bg-[#c97d4a]/10 px-4 py-1.5 rounded-full mb-4">
+              Best Sellers
+            </span>
+            <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-4">
+              Featured <span className="text-[#c97d4a]">Products</span>
+            </h2>
+            <p className="text-sm md:text-base text-muted-foreground max-w-2xl mx-auto">
+              Most loved products by our customers
+            </p>
+          </div>
+
+          <FeaturedProductsWithQuickView products={featuredProducts} />
+
+          <div className="mt-8 text-center sm:hidden">
+            <Link href="/products">
+              <Button variant="outline" className="w-full gap-2">View All Products <ArrowRight className="h-4 w-4" /></Button>
             </Link>
-          ))}
-        </nav>
-
-        {/* Right Actions */}
-        <div className="flex items-center gap-1 sm:gap-2">
-          <Link href="/cart">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="relative h-9 w-9 sm:h-10 sm:w-10"
-            >
-              <ShoppingCart className="h-5 w-5" />
-              {cartCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 sm:h-5 sm:w-5 items-center justify-center rounded-full bg-[#c97d4a] text-[9px] sm:text-[10px] font-medium text-white">
-                  {cartCount}
-                </span>
-              )}
-            </Button>
-          </Link>
-
-          {user ? (
-            <div className="hidden md:flex items-center gap-2">
-              {admin && (
-                <Link href="/admin">
-                  <Button variant="ghost" size="sm" className="gap-1">
-                    <LayoutDashboard className="h-4 w-4" />
-                    Dashboard
-                  </Button>
-                </Link>
-              )}
-              <form action={logout}>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  type="submit"
-                  className="gap-1 text-muted-foreground"
-                >
-                  <LogOut className="h-4 w-4" />
-                  Logout
-                </Button>
-              </form>
-            </div>
-          ) : (
-            <div className="hidden md:flex items-center gap-2">
-              <Link href="/login">
-                <Button variant="ghost" size="sm">
-                  Login
-                </Button>
-              </Link>
-              <Link href="/register">
-                <Button size="sm" className="bg-[#c97d4a] hover:bg-[#b56d3f]">
-                  Register
-                </Button>
-              </Link>
-            </div>
-          )}
+          </div>
         </div>
-      </div>
-    </header>
+      </section>
+    </PublicLayout>
   );
 }

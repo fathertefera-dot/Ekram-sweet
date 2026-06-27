@@ -144,6 +144,8 @@ export default async function HomePage() {
                 className="group block"
               >
                 <Card className="overflow-hidden border border-gray-100 shadow-sm hover:shadow-lg transition-all duration-300 rounded-xl hover:-translate-y-1">
+                  
+                  {/* የምርት ምስል እና ባጆች ክፍል */}
                   <div className="relative aspect-square overflow-hidden bg-gray-50">
                     {product.images && product.images[0] ? (
                       <Image
@@ -158,21 +160,22 @@ export default async function HomePage() {
                       </div>
                     )}
 
-                    {/* Pre-Order Badge ብቻውን ከላይ በግራ ይቀመጣል */}
-                    {product.availability === "pre-order" && (
-                      <Badge className="absolute top-3 left-3 bg-amber-500 text-white text-xs px-2 py-0.5 rounded-full shadow-sm">
-                        Pre-Order
-                      </Badge>
-                    )}
-                  </div>
-
-                  <CardContent className="p-4">
-                    <div className="space-y-2">
-                      {/* Category Badge አሁን ከምርት ስም በታች ይቀመጣል (ከላይ አይደለም) */}
+                    {/* ✅ ቀይ ቀለም ያከበብኩት ቦታ፦ ሁሉም ባጆች በምስሉ ታች መሃል እዚህ ተቀምጠዋል */}
+                    <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex flex-wrap gap-2">
+                      {product.availability === "pre-order" && (
+                        <Badge className="bg-amber-500 text-white text-xs px-2 py-0.5 rounded-full shadow-sm">
+                          Pre-Order
+                        </Badge>
+                      )}
                       <Badge variant="secondary" className="text-xs font-normal px-2 py-0.5 shadow-sm">
                         {product.category?.name}
                       </Badge>
-                      
+                    </div>
+                  </div>
+
+                  {/* የምርት መረጃ ክፍል (አሁን ከላይ ባጆች የሉም፣ ንጹህ ነው) */}
+                  <CardContent className="p-4">
+                    <div className="space-y-2">
                       <h3 className="font-medium text-sm md:text-base line-clamp-1 group-hover:text-[#c97d4a] transition-colors">
                         {product.name}
                       </h3>

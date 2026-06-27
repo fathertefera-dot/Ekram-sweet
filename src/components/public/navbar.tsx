@@ -49,35 +49,32 @@ export default function Navbar() {
     loadData();
   }, [pathname]);
 
-  // ገጹ ሲቀየር የ"Categories" ንቁ ሁኔታን እንደገና እናስተካክላለን
+  // ሁለቱንም (pathname እና hash) ለመከታተል የሚረዳ አመካኒዮስ
   useEffect(() => {
-    if (pathname !== "/") {
-      setIsCategoriesActive(false);
-    } else {
+    const checkHash = () => {
       const hash = window.location.hash;
-      if (hash === "#categories") {
+      if (pathname === "/" && hash === "#categories") {
         setIsCategoriesActive(true);
       } else {
         setIsCategoriesActive(false);
       }
-    }
+    };
+
+    checkHash(); // ገጹ ሲጫን ይፈትሻል
+    window.addEventListener("hashchange", checkHash); // አድራሻው ላይ hash ሲቀየር ይሰማል
+    return () => window.removeEventListener("hashchange", checkHash);
   }, [pathname]);
 
   // "Categories" ን ለመጫን የሚረዳ ተግባር
   const handleCategoriesClick = () => {
     setMobileMenuOpen(false);
-    
     if (pathname === "/") {
-      setIsCategoriesActive(true);
-      setTimeout(() => {
-        document.getElementById("categories")?.scrollIntoView({ behavior: "smooth" });
-      }, 100);
+      // ቀድሞውንም በቤት ገጽ ላይ ከሆንን አድራሻው ላይ #categories ን እንጨምራለን
+      window.location.hash = "#categories";
+      // `hashchange` event listener በራሱ ወደ active ይቀይረዋል
     } else {
-      router.push("/");
-      setTimeout(() => {
-        setIsCategoriesActive(true);
-        document.getElementById("categories")?.scrollIntoView({ behavior: "smooth" });
-      }, 300);
+      // ከሌላ ገጽ ከሆንን ወደ "/#categories" እንሄዳለን
+      router.push("/#categories");
     }
   };
 
@@ -143,7 +140,7 @@ export default function Navbar() {
                       );
                     }
 
-                    // ለሌሎቹ መደበኛ Link - "Home" ን ለመከላከል ልዩ ሁኔታ ተጨምሯል
+                    // ለሌሎቹ መደበኛ Link
                     let isActive = false;
                     if (item.label === "Home") {
                       // "Home" የሚደምቀው "Categories" ንቁ ካልሆነ ብቻ ነው!

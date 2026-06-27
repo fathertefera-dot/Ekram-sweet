@@ -3,23 +3,15 @@
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import type { Settings } from "@/types";
+import { isAdmin } from "./auth";
 
 export async function getSettings(): Promise<Settings | null> {
   const supabase = await createClient();
-
-  const { data, error } = await supabase
-    .from("settings")
-    .select("*")
-    .single();
+  const { data, error } = await supabase.from("settings").select("*").single();
 
   if (error) {
     // If no settings exist, create default
-    const { data: newSettings, error: createError } = await supabase
-      .from("settings")
-      .insert({ business_name: "Iku Sweet Cake" })
-      .select()
-      .single();
-
+    const { data: newSettings, error: createError } = await supabase.from("settings").insert({ business_name: "Iku Sweet Cake" }).select().single();
     if (createError) return null;
     return newSettings as Settings;
   }
@@ -28,14 +20,13 @@ export async function getSettings(): Promise<Settings | null> {
 }
 
 export async function updateSettings(formData: FormData) {
+  // 🔧 [Bug Fix #5] - Admin authorization check
+  if (!(await isAdmin())) throw new Error("Unauthorized");
+
   const supabase = await createClient();
 
   // Get existing settings to find ID
-  const { data: existing } = await supabase
-    .from("settings")
-    .select("id")
-    .single();
-
+  const { data: existing } = await supabase.from("settings").select("id").single();
   const id = existing?.id;
 
   const settings = {
@@ -62,15 +53,10 @@ export async function updateSettings(formData: FormData) {
 
   let error;
   if (id) {
-    const { error: updateError } = await supabase
-      .from("settings")
-      .update(settings)
-      .eq("id", id);
+    const { error: updateError } = await supabase.from("settings").update(settings).eq("id", id);
     error = updateError;
   } else {
-    const { error: insertError } = await supabase
-      .from("settings")
-      .insert(settings);
+    const { error: insertError } = await supabase.from("settings").insert(settings);
     error = insertError;
   }
 

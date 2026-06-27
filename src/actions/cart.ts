@@ -4,13 +4,14 @@ import { createClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import type { CartWithItems } from "@/types";
+import { SupabaseClient } from "@supabase/supabase-js";
 
 function generateSessionId(): string {
   return "sess_" + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
 }
 
-// 🔧 የ RL ፖሊሲው እንዲሰራ የ 'app.session_id' ን በ PostgreSQL ውስጥ እናስቀምጣለን
-async function setSessionConfig(supabase: ReturnType<typeof createClient>, sessionId: string) {
+// 🔧 የ RLS ፖሊሲው እንዲሰራ የ 'app.session_id' ን በ PostgreSQL ውስጥ እናስቀምጣለን
+async function setSessionConfig(supabase: SupabaseClient, sessionId: string) {
   try {
     await supabase.rpc('set_config', {
       variable: 'app.session_id',

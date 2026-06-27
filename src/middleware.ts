@@ -3,7 +3,9 @@ import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function middleware(request: NextRequest) {
-  let response = NextResponse.next({
+  // ኩኪዎችን ለማስተናገድ የሚረዳ መፍትሄ
+  // ይህ በ Next.js 15 ላይ በጣም ይመከራል
+  const response = NextResponse.next({
     request: {
       headers: request.headers,
     },
@@ -18,11 +20,9 @@ export async function middleware(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            // ✅ እዚህ ላይ ተስተካክሏል: ሶስት ነጋሪ እሴቶች ሳይሆን አንድ ነጋሪ እሴት (object) ነው የምንልከው
-            request.cookies.set({ name, value, options });
-            response.cookies.set({ name, value, options });
-          });
+          cookiesToSet.forEach(({ name, value, options }) =>
+            response.cookies.set(name, value, options)
+          );
         },
       },
     }
@@ -38,7 +38,7 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL("/login", request.url));
     }
 
-    // ✅ እዚህ ላይ አዲሱን የ Admin Client በመጠቀም RLS ን እናልፋለን!
+    // የ Admin Client በመጠቀም RLS ን እናልፋለን!
     const supabaseAdmin = createAdminClient();
     const { data: profile } = await supabaseAdmin
       .from("profiles")

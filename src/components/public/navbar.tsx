@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { 
   ShoppingCart, 
   Menu, 
@@ -27,11 +27,12 @@ import { getCartCount } from "@/actions/cart";
 import { getCurrentUser, logout, isAdmin } from "@/actions/auth";
 
 export default function Navbar() {
+  const router = useRouter();
+  const pathname = usePathname();
   const [cartCount, setCartCount] = useState(0);
   const [user, setUser] = useState<Awaited<ReturnType<typeof getCurrentUser>>>(null);
   const [admin, setAdmin] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const pathname = usePathname();
 
   useEffect(() => {
     async function loadData() {
@@ -47,10 +48,30 @@ export default function Navbar() {
     loadData();
   }, [pathname]);
 
-  // የሞባይል ሳይድ ባር ዝርዝር (Menu items) - እዚህ ላይ "Categories" ወደ "/#categories" ተቀይሯል
+  // "Categories" ን ለመጫን የሚረዳ ተግባር (ለመዝለል scrollIntoView ይጠቀማል)
+  const handleCategoriesClick = () => {
+    setMobileMenuOpen(false);
+    if (pathname === "/") {
+      // ቀድሞውንም በቤት ገጽ ላይ ከሆንን ወዲያውኑ ዘልለን
+      setTimeout(() => {
+        document.getElementById("categories")?.scrollIntoView({ behavior: "smooth" });
+      }, 100);
+    } else {
+      // ወደ ቤት ገጽ ሄደን ከተጫነ በኋላ ዘልለን
+      router.push("/");
+      setTimeout(() => {
+        document.getElementById("categories")?.scrollIntoView({ behavior: "smooth" });
+      }, 300);
+    }
+  };
+
   const menuItems = [
     { href: "/", label: "Home", icon: Home },
-    { href: "/#categories", label: "Categories", icon: Layers },
+    { 
+      label: "Categories", 
+      icon: Layers, 
+      onClick: handleCategoriesClick // እዚህ ላይ የተለየ ተግባር እንጠቀማለን
+    },
     { href: "/cart", label: "Cart", icon: ShoppingCart },
     { href: "/track-order", label: "Track Order", icon: Truck },
     { href: "/products", label: "Products", icon: Cake },
@@ -68,9 +89,7 @@ export default function Navbar() {
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto flex h-14 sm:h-16 items-center justify-between px-4">
         
-        {/* ግራ በኩል (Mobile): ምናሌ + ሎጎ */}
         <div className="flex items-center gap-2">
-          {/* የሞባይል ምናሌ መክፈቻ (ከሎጎው ግራ) */}
           <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
             <SheetTrigger asChild>
               <button className="md:hidden p-2 -ml-2 rounded-md hover:bg-muted touch-manipulation" aria-label="Toggle menu">
@@ -80,7 +99,6 @@ export default function Navbar() {
             
             <SheetContent side="left" className="w-[280px] sm:w-[320px] p-0 border-r-0 bg-white">
               <div className="flex flex-col h-full">
-                {/* Sidebar Header */}
                 <div className="px-6 py-5 border-b">
                   <Link href="/" className="flex items-center gap-2" onClick={() => setMobileMenuOpen(false)}>
                     <ShoppingBag className="h-6 w-6 text-[#c97d4a]" />
@@ -88,14 +106,28 @@ export default function Navbar() {
                   </Link>
                 </div>
 
-                {/* Sidebar Navigation */}
                 <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
                   {menuItems.map((item) => {
+                    // ለ Categories ልዩ የሆነ አሰራር (onClick)
+                    if (item.label === "Categories") {
+                      return (
+                        <button
+                          key={item.label}
+                          onClick={item.onClick}
+                          className="flex w-full items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors text-left"
+                        >
+                          <item.icon className="h-5 w-5" />
+                          {item.label}
+                        </button>
+                      );
+                    }
+
+                    // ለሌሎች አዝራሮች መደበኛ Link
                     const isActive = pathname === item.href;
                     return (
                       <Link
                         key={item.href}
-                        href={item.href}
+                        href={item.href!}
                         onClick={() => setMobileMenuOpen(false)}
                         className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
                           isActive
@@ -110,7 +142,6 @@ export default function Navbar() {
                   })}
                 </nav>
 
-                {/* Sidebar Footer (Settings & Auth) */}
                 <div className="p-4 border-t space-y-1">
                   {user ? (
                     <div className="space-y-1">
@@ -150,14 +181,12 @@ export default function Navbar() {
             </SheetContent>
           </Sheet>
 
-          {/* ሎጎ */}
           <Link href="/" className="flex items-center gap-2 shrink-0">
             <ShoppingBag className="h-6 w-6 sm:h-7 sm:w-7 text-[#c97d4a]" />
             <span className="text-base sm:text-xl font-bold tracking-tight">Ekram Sweet</span>
           </Link>
         </div>
 
-        {/* መሃል (Desktop): አሰሳ */}
         <nav className="hidden md:flex items-center gap-1">
           {desktopNavLinks.map((link) => (
             <Link
@@ -174,9 +203,7 @@ export default function Navbar() {
           ))}
         </nav>
 
-        {/* ቀኝ በኩል: ካርት እና የተጠቃሚ ድርጊቶች */}
         <div className="flex items-center gap-1 sm:gap-2">
-          {/* Cart */}
           <Link href="/cart">
             <Button variant="ghost" size="icon" className="relative h-9 w-9 sm:h-10 sm:w-10">
               <ShoppingCart className="h-5 w-5" />
@@ -188,7 +215,6 @@ export default function Navbar() {
             </Button>
           </Link>
 
-          {/* Desktop User Actions */}
           {user ? (
             <div className="hidden md:flex items-center gap-2">
               {admin && (

@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({
@@ -18,7 +19,7 @@ export async function middleware(request: NextRequest) {
         },
         setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
           cookiesToSet.forEach(({ name, value, options }) => {
-            request.cookies.set(name, value);
+            request.cookies.set(name, value, options);
             response.cookies.set(name, value, options);
           });
         },
@@ -36,12 +37,16 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL("/login", request.url));
     }
 
-    // Check if user is admin
-    const { data: profile } = await supabase
+    // ✅ እዚህ ላይ አዲሱን የ Admin Client በመጠቀም RLS ን እናልፋለን!
+    const supabaseAdmin = createAdminClient();
+    const { data: profile } = await supabaseAdmin
       .from("profiles")
       .select("role")
       .eq("id", user.id)
       .single();
+
+    // profile ን ለማረጋገጥ ከፈለጉ console.log ማከል ይችላሉ
+    // console.log("Admin check for user:", user.id, "Role:", profile?.role);
 
     if (!profile || profile.role !== "admin") {
       return NextResponse.redirect(new URL("/", request.url));

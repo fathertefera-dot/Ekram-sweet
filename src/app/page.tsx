@@ -81,8 +81,8 @@ export default async function HomePage() {
         )}
       </section>
 
-      {/* Categories Section - Mobile First */}
-      <section className="py-10 sm:py-14 md:py-16 bg-white">
+      {/* Categories Section - Mobile First (id="categories" ተጨምሯል) */}
+      <section id="categories" className="py-10 sm:py-14 md:py-16 bg-white">
         <div className="container mx-auto px-4">
           <div className="text-center mb-7 sm:mb-10">
             <h2 className="text-2xl sm:text-3xl font-bold mb-2 sm:mb-3">Our Categories</h2>

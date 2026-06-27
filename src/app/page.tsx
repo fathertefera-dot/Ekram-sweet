@@ -80,32 +80,41 @@ export default async function HomePage() {
         )}
       </section>
 
-      {/* Categories Section */}
-      <section id="categories" className="py-16 md:py-24 bg-gradient-to-b from-background to-stone-50">
+      {/* Categories Section - Clean & Distinct */}
+      <section id="categories" className="py-12 md:py-20 bg-stone-50/50">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-12 md:mb-16">
-            <span className="inline-block text-xs font-semibold uppercase tracking-widest text-[#c97d4a] bg-[#c97d4a]/10 px-4 py-1.5 rounded-full mb-4">
+          <div className="text-center mb-8 md:mb-12">
+            <span className="inline-block text-xs font-medium uppercase tracking-widest text-[#c97d4a] bg-[#c97d4a]/10 px-3 py-1 rounded-full mb-3">
               Browse Categories
             </span>
-            <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-4">
-              Find Your Favorite <span className="text-[#c97d4a]">Sweet Treats</span>
+            <h2 className="text-2xl md:text-4xl font-bold tracking-tight mb-3">
+              Shop by <span className="text-[#c97d4a]">Category</span>
             </h2>
-            <p className="text-sm md:text-base text-muted-foreground max-w-2xl mx-auto">
-              Handcrafted cakes, desserts, and bakery products prepared with premium ingredients.
-            </p>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
+          
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
             {categories.map((category) => (
-              <Link key={category.id} href={`/products?category=${category.id}`} className="group block">
-                <Card className="relative overflow-hidden rounded-3xl border-0 shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-2">
-                  <div className="aspect-[4/3] relative overflow-hidden bg-muted/20">
-                    <Image src={category.image || "/images/placeholder.jpg"} alt={category.name} fill className="object-cover transition-transform duration-700 group-hover:scale-110" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
+              <Link
+                key={category.id}
+                href={`/products?category=${category.id}`}
+                className="group block"
+              >
+                <Card className="overflow-hidden border-0 shadow-sm hover:shadow-md transition-all duration-300 rounded-2xl bg-white/80 backdrop-blur-sm hover:-translate-y-1">
+                  <div className="relative aspect-[4/3] overflow-hidden bg-gray-50">
+                    <Image
+                      src={category.image || "/images/placeholder.jpg"}
+                      alt={category.name}
+                      fill
+                      className="object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
                   </div>
-                  <CardContent className="absolute inset-0 flex flex-col justify-end p-6 md:p-8">
-                    <h3 className="text-white text-xl md:text-2xl font-semibold mb-2">{category.name}</h3>
-                    <span className="flex items-center text-sm text-white/80 transition-colors group-hover:text-white">
-                      Explore Collection <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+                  <CardContent className="p-4 text-center">
+                    <h3 className="font-semibold text-sm md:text-base text-foreground mb-1">
+                      {category.name}
+                    </h3>
+                    <span className="inline-flex items-center text-xs text-[#c97d4a] font-medium">
+                      Shop Now
+                      <ArrowRight className="ml-1 h-3 w-3 transition-transform group-hover:translate-x-1" />
                     </span>
                   </CardContent>
                 </Card>
@@ -115,63 +124,67 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Featured Products Section - Clean Version */}
-      <section className="py-16 md:py-24 bg-gradient-to-b from-stone-50 to-background">
+      {/* Featured Products Section - Shoppable & Clear */}
+      <section className="py-12 md:py-20 bg-background">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-12 md:mb-16">
-            <span className="inline-block text-xs font-semibold uppercase tracking-widest text-[#c97d4a] bg-[#c97d4a]/10 px-4 py-1.5 rounded-full mb-4">
+          <div className="text-center mb-8 md:mb-12">
+            <span className="inline-block text-xs font-medium uppercase tracking-widest text-[#c97d4a] bg-[#c97d4a]/10 px-3 py-1 rounded-full mb-3">
               Best Sellers
             </span>
-            <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-4">
+            <h2 className="text-2xl md:text-4xl font-bold tracking-tight mb-3">
               Featured <span className="text-[#c97d4a]">Products</span>
             </h2>
-            <p className="text-sm md:text-base text-muted-foreground max-w-2xl mx-auto">
-              Most loved products by our customers
-            </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
             {featuredProducts.map((product) => (
-              <Link key={product.id} href={`/products/${product.slug}`} className="group block">
-                <Card className="relative overflow-hidden rounded-3xl border-0 shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 h-full">
-                  <div className="relative aspect-square overflow-hidden bg-gray-100">
+              <Link
+                key={product.id}
+                href={`/products/${product.slug}`}
+                className="group block"
+              >
+                <Card className="overflow-hidden border border-gray-100 shadow-sm hover:shadow-lg transition-all duration-300 rounded-xl hover:-translate-y-1">
+                  <div className="relative aspect-square overflow-hidden bg-gray-50">
                     {product.images && product.images[0] ? (
                       <Image
                         src={product.images[0].image_url}
                         alt={product.name}
                         fill
-                        className="object-cover transition-transform duration-700 group-hover:scale-110"
+                        className="object-cover transition-transform duration-500 group-hover:scale-105"
                       />
                     ) : (
                       <div className="flex items-center justify-center h-full">
-                        <ShoppingBag className="h-16 w-16 text-muted" />
+                        <ShoppingBag className="h-12 w-12 text-gray-300" />
                       </div>
                     )}
                     {product.availability === "pre-order" && (
-                      <Badge className="absolute top-4 left-4 bg-amber-500 text-white text-xs px-3 py-1 rounded-full shadow-md">
+                      <Badge className="absolute top-3 left-3 bg-amber-500 text-white text-xs px-2 py-0.5 rounded-full shadow-sm">
                         Pre-Order
                       </Badge>
                     )}
+                    <Badge variant="secondary" className="absolute top-3 right-3 text-xs font-normal px-2 py-0.5 shadow-sm">
+                      {product.category?.name}
+                    </Badge>
                   </div>
 
-                  <CardContent className="p-5 md:p-6">
-                    <div className="mb-2">
-                      <Badge variant="secondary" className="text-xs font-normal">
-                        {product.category?.name}
-                      </Badge>
+                  <CardContent className="p-4">
+                    <div className="space-y-2">
+                      <h3 className="font-medium text-sm md:text-base line-clamp-1 group-hover:text-[#c97d4a] transition-colors">
+                        {product.name}
+                      </h3>
+                      <p className="text-xs text-muted-foreground line-clamp-1">
+                        {product.description || "Premium quality"}
+                      </p>
                     </div>
-                    <h3 className="font-semibold text-base md:text-lg mb-1 group-hover:text-[#c97d4a] transition-colors line-clamp-1">
-                      {product.name}
-                    </h3>
-                    <p className="text-xs text-muted-foreground line-clamp-2 mb-4">
-                      {product.description || "Premium quality product"}
-                    </p>
-                    <div className="flex items-center justify-end pt-2">
-                      <div className="text-lg md:text-xl font-bold text-[#c97d4a]">
+                    <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
+                      <span className="text-base md:text-lg font-bold text-[#c97d4a]">
                         {product.variants && product.variants[0]
                           ? formatPrice(Number(product.variants[0].price))
                           : "ETB 0"}
-                      </div>
+                      </span>
+                      <Button size="sm" variant="ghost" className="text-[#c97d4a] hover:bg-[#c97d4a]/10 px-2 h-8 text-xs">
+                        View
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -181,7 +194,9 @@ export default async function HomePage() {
 
           <div className="mt-8 text-center sm:hidden">
             <Link href="/products">
-              <Button variant="outline" className="w-full gap-2">View All Products <ArrowRight className="h-4 w-4" /></Button>
+              <Button variant="outline" className="w-full gap-2">
+                View All Products <ArrowRight className="h-4 w-4" />
+              </Button>
             </Link>
           </div>
         </div>

@@ -47,10 +47,10 @@ export default function Navbar() {
     loadData();
   }, [pathname]);
 
-  // የሞባይል ሳይድ ባር ዝርዝር (Menu items)
+  // የሞባይል ሳይድ ባር ዝርዝር (Menu items) - እዚህ ላይ "Categories" ወደ "/#categories" ተቀይሯል
   const menuItems = [
     { href: "/", label: "Home", icon: Home },
-    { href: "/products", label: "Categories", icon: Layers },
+    { href: "/#categories", label: "Categories", icon: Layers },
     { href: "/cart", label: "Cart", icon: ShoppingCart },
     { href: "/track-order", label: "Track Order", icon: Truck },
     { href: "/products", label: "Products", icon: Cake },
@@ -70,7 +70,7 @@ export default function Navbar() {
         
         {/* ግራ በኩል (Mobile): ምናሌ + ሎጎ */}
         <div className="flex items-center gap-2">
-          {/* የሞባይል ምናሌ መክፈቻ (አሁን ግራ በኩል ነው) */}
+          {/* የሞባይል ምናሌ መክፈቻ (ከሎጎው ግራ) */}
           <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
             <SheetTrigger asChild>
               <button className="md:hidden p-2 -ml-2 rounded-md hover:bg-muted touch-manipulation" aria-label="Toggle menu">

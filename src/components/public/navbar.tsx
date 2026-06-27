@@ -49,33 +49,34 @@ export default function Navbar() {
     loadData();
   }, [pathname]);
 
-  // ሁለቱንም (pathname እና hash) ለመከታተል የሚረዳ አመካኒዮስ
+  // ✅ ልዩ የሆነ እና የማይሳሳት የሁኔታ አስተዳደር (sessionStorage በመጠቀም)
   useEffect(() => {
-    const checkHash = () => {
-      const hash = window.location.hash;
-      if (pathname === "/" && hash === "#categories") {
+    if (pathname === "/") {
+      // 1. ከ "Categories" ከተመጣን የተቀመጠውን መረጃ እናነባለን
+      const navigateToCategories = sessionStorage.getItem("navigateToCategories");
+      if (navigateToCategories === "true") {
         setIsCategoriesActive(true);
+        sessionStorage.removeItem("navigateToCategories"); // አንዴ ካነበብን በኋላ እንሰርዛለን
+        
+        // ወደ ምድቦቹ ክፍል በስላሳ መዝለል
+        setTimeout(() => {
+          document.getElementById("categories")?.scrollIntoView({ behavior: "smooth" });
+        }, 300);
       } else {
-        setIsCategoriesActive(false);
+        // 2. በተለመደው መንገድ ከሆነ፣ hash ን እንፈትሻለን
+        setIsCategoriesActive(window.location.hash === "#categories");
       }
-    };
-
-    checkHash(); // ገጹ ሲጫን ይፈትሻል
-    window.addEventListener("hashchange", checkHash); // አድራሻው ላይ hash ሲቀየር ይሰማል
-    return () => window.removeEventListener("hashchange", checkHash);
+    } else {
+      setIsCategoriesActive(false);
+    }
   }, [pathname]);
 
-  // "Categories" ን ለመጫን የሚረዳ ተግባር
+  // "Categories" ን ለመጫን የሚረዳ ተግባር (የተሻሻለ)
   const handleCategoriesClick = () => {
     setMobileMenuOpen(false);
-    if (pathname === "/") {
-      // ቀድሞውንም በቤት ገጽ ላይ ከሆንን አድራሻው ላይ #categories ን እንጨምራለን
-      window.location.hash = "#categories";
-      // `hashchange` event listener በራሱ ወደ active ይቀይረዋል
-    } else {
-      // ከሌላ ገጽ ከሆንን ወደ "/#categories" እንሄዳለን
-      router.push("/#categories");
-    }
+    // ✅ ወደ ቤት ገጽ ከመሄድዎ በፊት ለማስታወስ በማከማቻ ውስጥ እናስቀምጣለን
+    sessionStorage.setItem("navigateToCategories", "true");
+    router.push("/");
   };
 
   const menuItems = [
@@ -143,7 +144,7 @@ export default function Navbar() {
                     // ለሌሎቹ መደበኛ Link
                     let isActive = false;
                     if (item.label === "Home") {
-                      // "Home" የሚደምቀው "Categories" ንቁ ካልሆነ ብቻ ነው!
+                      // ✅ "Home" የሚደምቀው "Categories" ንቁ (active) ካልሆነ ብቻ ነው!
                       isActive = pathname === "/" && !isCategoriesActive;
                     } else {
                       isActive = pathname === item.href;

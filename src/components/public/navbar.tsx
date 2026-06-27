@@ -3,8 +3,26 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ShoppingCart, Menu, X, ShoppingBag, LogOut, LayoutDashboard } from "lucide-react";
+import { 
+  ShoppingCart, 
+  Menu, 
+  ShoppingBag, 
+  LogOut, 
+  LayoutDashboard,
+  Home,
+  Layers,
+  Truck,
+  Cake,
+  Info,
+  Settings,
+  LogIn
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { getCartCount } from "@/actions/cart";
 import { getCurrentUser, logout, isAdmin } from "@/actions/auth";
 
@@ -29,12 +47,17 @@ export default function Navbar() {
     loadData();
   }, [pathname]);
 
-  // Close mobile menu on route change
-  useEffect(() => {
-    setMobileMenuOpen(false);
-  }, [pathname]);
+  // የሞባይል ሳይድ ባር ዝርዝር (Menu items)
+  const menuItems = [
+    { href: "/", label: "Home", icon: Home },
+    { href: "/products", label: "Categories", icon: Layers },
+    { href: "/cart", label: "Cart", icon: ShoppingCart },
+    { href: "/track-order", label: "Track Order", icon: Truck },
+    { href: "/products", label: "Products", icon: Cake },
+    { href: "/about", label: "About", icon: Info },
+  ];
 
-  const navLinks = [
+  const desktopNavLinks = [
     { href: "/", label: "Home" },
     { href: "/products", label: "Products" },
     { href: "/track-order", label: "Track Order" },
@@ -52,7 +75,7 @@ export default function Navbar() {
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center gap-1">
-          {navLinks.map((link) => (
+          {desktopNavLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
@@ -110,74 +133,87 @@ export default function Navbar() {
             </div>
           )}
 
-          {/* Mobile Menu Button */}
-          <button
-            className="md:hidden p-2 rounded-md hover:bg-muted touch-manipulation"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            aria-label="Toggle menu"
-          >
-            {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </button>
-        </div>
-      </div>
-
-      {/* Mobile Menu - Full width dropdown */}
-      {mobileMenuOpen && (
-        <div className="md:hidden border-t bg-background shadow-lg">
-          <div className="container mx-auto px-4 py-2">
-            <nav className="space-y-1">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className={`flex items-center px-3 py-3 text-sm font-medium rounded-md transition-colors ${
-                    pathname === link.href
-                      ? "text-[#c97d4a] bg-[#c97d4a]/10"
-                      : "text-foreground/80 hover:bg-muted"
-                  }`}
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  {link.label}
-                </Link>
-              ))}
-            </nav>
-            <div className="pt-2 pb-2 border-t mt-2 space-y-1">
-              {user ? (
-                <>
-                  {admin && (
-                    <Link
-                      href="/admin"
-                      className="flex items-center gap-2 px-3 py-3 text-sm font-medium rounded-md hover:bg-muted"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      <LayoutDashboard className="h-4 w-4" />
-                      Dashboard
-                    </Link>
-                  )}
-                  <form action={logout}>
-                    <button
-                      type="submit"
-                      className="flex w-full items-center gap-2 px-3 py-3 text-sm font-medium rounded-md text-red-600 hover:bg-red-50"
-                    >
-                      <LogOut className="h-4 w-4" />
-                      Logout
-                    </button>
-                  </form>
-                </>
-              ) : (
-                <div className="grid grid-cols-2 gap-2 pt-1">
-                  <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
-                    <Button variant="outline" className="w-full" size="sm">Login</Button>
-                  </Link>
-                  <Link href="/register" onClick={() => setMobileMenuOpen(false)}>
-                    <Button className="w-full bg-[#c97d4a] hover:bg-[#b56d3f]" size="sm">Register</Button>
+          {/* Mobile Menu Trigger (Hamburger) */}
+          <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+            <SheetTrigger asChild>
+              <button className="md:hidden p-2 rounded-md hover:bg-muted touch-manipulation" aria-label="Toggle menu">
+                <Menu className="h-5 w-5" />
+              </button>
+            </SheetTrigger>
+            
+            <SheetContent side="left" className="w-[280px] sm:w-[320px] p-0 border-r-0 bg-white">
+              <div className="flex flex-col h-full">
+                {/* Sidebar Header */}
+                <div className="px-6 py-5 border-b">
+                  <Link href="/" className="flex items-center gap-2" onClick={() => setMobileMenuOpen(false)}>
+                    <ShoppingBag className="h-6 w-6 text-[#c97d4a]" />
+                    <span className="text-lg font-bold">Ekram Sweet</span>
                   </Link>
                 </div>
-              )}
-            </div>
-          </div>
+
+                {/* Sidebar Navigation */}
+                <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
+                  {menuItems.map((item) => {
+                    const isActive = pathname === item.href;
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={() => setMobileMenuOpen(false)}
+                        className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+                          isActive
+                            ? "bg-[#c97d4a]/10 text-[#c97d4a]"
+                            : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                        }`}
+                      >
+                        <item.icon className="h-5 w-5" />
+                        {item.label}
+                      </Link>
+                    );
+                  })}
+                </nav>
+
+                {/* Sidebar Footer (Settings & Auth) */}
+                <div className="p-4 border-t space-y-1">
+                  {user ? (
+                    <div className="space-y-1">
+                      <Link
+                        href="/admin/settings"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                      >
+                        <Settings className="h-5 w-5" />
+                        Settings
+                      </Link>
+                      <form action={logout}>
+                        <button
+                          type="submit"
+                          className="flex w-full items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
+                          onClick={() => setMobileMenuOpen(false)}
+                        >
+                          <LogOut className="h-5 w-5" />
+                          Logout
+                        </button>
+                      </form>
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      <Link
+                        href="/login"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                      >
+                        <LogIn className="h-5 w-5" />
+                        Login / Register
+                      </Link>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </SheetContent>
+          </Sheet>
         </div>
-      )}
+      </div>
     </header>
   );
 }

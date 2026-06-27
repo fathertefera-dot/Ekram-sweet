@@ -157,14 +157,18 @@ export default async function HomePage() {
                         <ShoppingBag className="h-12 w-12 text-gray-300" />
                       </div>
                     )}
-                    {product.availability === "pre-order" && (
-                      <Badge className="absolute top-3 left-3 bg-amber-500 text-white text-xs px-2 py-0.5 rounded-full shadow-sm">
-                        Pre-Order
+
+                    {/* ✅ ባጆች የሚቀመጡበት ቦታ ተስተካክሏል (አንድ ላይ በተጠቀለለ እና አይጋጩም) */}
+                    <div className="absolute top-3 left-3 flex flex-wrap gap-1.5">
+                      {product.availability === "pre-order" && (
+                        <Badge className="bg-amber-500 text-white text-xs px-2 py-0.5 rounded-full shadow-sm">
+                          Pre-Order
+                        </Badge>
+                      )}
+                      <Badge variant="secondary" className="text-xs font-normal px-2 py-0.5 shadow-sm">
+                        {product.category?.name}
                       </Badge>
-                    )}
-                    <Badge variant="secondary" className="absolute top-3 right-3 text-xs font-normal px-2 py-0.5 shadow-sm">
-                      {product.category?.name}
-                    </Badge>
+                    </div>
                   </div>
 
                   <CardContent className="p-4">

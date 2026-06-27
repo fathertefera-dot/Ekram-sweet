@@ -19,8 +19,9 @@ export async function middleware(request: NextRequest) {
         },
         setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
           cookiesToSet.forEach(({ name, value, options }) => {
-            request.cookies.set(name, value, options);
-            response.cookies.set(name, value, options);
+            // ✅ እዚህ ላይ ተስተካክሏል: ሶስት ነጋሪ እሴቶች ሳይሆን አንድ ነጋሪ እሴት (object) ነው የምንልከው
+            request.cookies.set({ name, value, options });
+            response.cookies.set({ name, value, options });
           });
         },
       },
@@ -44,9 +45,6 @@ export async function middleware(request: NextRequest) {
       .select("role")
       .eq("id", user.id)
       .single();
-
-    // profile ን ለማረጋገጥ ከፈለጉ console.log ማከል ይችላሉ
-    // console.log("Admin check for user:", user.id, "Role:", profile?.role);
 
     if (!profile || profile.role !== "admin") {
       return NextResponse.redirect(new URL("/", request.url));

@@ -9,6 +9,20 @@ function generateSessionId(): string {
   return "sess_" + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
 }
 
+// 🔧 የ RL ፖሊሲው እንዲሰራ የ 'app.session_id' ን በ PostgreSQL ውስጥ እናስቀምጣለን
+async function setSessionConfig(supabase: ReturnType<typeof createClient>, sessionId: string) {
+  try {
+    await supabase.rpc('set_config', {
+      variable: 'app.session_id',
+      value: sessionId,
+      is_local: true
+    });
+  } catch (error) {
+    console.error("Failed to set app.session_id config:", error);
+    // ይህ ስህተት የካርት ስራውን አያቆምም፣ ነገር ግን የ RLS ፍተሻው እንዲሳካ እንሞክራለን
+  }
+}
+
 async function getOrCreateSessionId(): Promise<string> {
   const cookieStore = await cookies();
   let sessionId = cookieStore.get("cart_session_id")?.value;
@@ -29,6 +43,9 @@ async function getOrCreateSessionId(): Promise<string> {
 async function getCartId(): Promise<string | null> {
   const supabase = await createClient();
   const sessionId = await getOrCreateSessionId();
+
+  // 🔧 የ RLS ፖሊሲው እንዲሰራ እዚህ ላይ የ PostgreSQL ሴሽን ቅንብር እናስቀምጣለን
+  await setSessionConfig(supabase, sessionId);
 
   // Check authenticated user
   const { data: { user } } = await supabase.auth.getUser();

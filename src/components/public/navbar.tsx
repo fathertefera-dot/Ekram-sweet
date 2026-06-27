@@ -33,6 +33,9 @@ export default function Navbar() {
   const [user, setUser] = useState<Awaited<ReturnType<typeof getCurrentUser>>>(null);
   const [admin, setAdmin] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  
+  // ለ "Categories" ተጨማሪ የንቁ ሁኔታ (state)
+  const [isCategoriesActive, setIsCategoriesActive] = useState(false);
 
   useEffect(() => {
     async function loadData() {
@@ -48,11 +51,29 @@ export default function Navbar() {
     loadData();
   }, [pathname]);
 
+  // ገጹ ሲቀየር ወይም ሲጫን የ"Categories" ንቁ ሁኔታን እንደገና እናስተካክላለን
+  useEffect(() => {
+    // ከ "Categories" ግጭት በኋላ ወደ ሌላ ገጽ ከሄድን ሁኔታውን ወደ false እናመጣለን
+    if (pathname !== "/") {
+      setIsCategoriesActive(false);
+    } else {
+      // በቤት ገጽ ላይ ከሆንን፣ hash ን እንፈትሻለን
+      const hash = window.location.hash;
+      if (hash === "#categories") {
+        setIsCategoriesActive(true);
+      } else {
+        setIsCategoriesActive(false);
+      }
+    }
+  }, [pathname]);
+
   // "Categories" ን ለመጫን የሚረዳ ተግባር (ለመዝለል scrollIntoView ይጠቀማል)
   const handleCategoriesClick = () => {
     setMobileMenuOpen(false);
+    
     if (pathname === "/") {
       // ቀድሞውንም በቤት ገጽ ላይ ከሆንን ወዲያውኑ ዘልለን
+      setIsCategoriesActive(true);
       setTimeout(() => {
         document.getElementById("categories")?.scrollIntoView({ behavior: "smooth" });
       }, 100);
@@ -60,6 +81,7 @@ export default function Navbar() {
       // ወደ ቤት ገጽ ሄደን ከተጫነ በኋላ ዘልለን
       router.push("/");
       setTimeout(() => {
+        setIsCategoriesActive(true);
         document.getElementById("categories")?.scrollIntoView({ behavior: "smooth" });
       }, 300);
     }
@@ -70,7 +92,8 @@ export default function Navbar() {
     { 
       label: "Categories", 
       icon: Layers, 
-      onClick: handleCategoriesClick // እዚህ ላይ የተለየ ተግባር እንጠቀማለን
+      onClick: handleCategoriesClick,
+      isActive: isCategoriesActive // ልዩ የንቁ ሁኔታ
     },
     { href: "/cart", label: "Cart", icon: ShoppingCart },
     { href: "/track-order", label: "Track Order", icon: Truck },
@@ -108,13 +131,17 @@ export default function Navbar() {
 
                 <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
                   {menuItems.map((item) => {
-                    // ለ Categories ልዩ የሆነ አሰራር (onClick)
+                    // ለ "Categories" ልዩ የሆነ አሰራር (onClick እና isActive)
                     if (item.label === "Categories") {
                       return (
                         <button
                           key={item.label}
                           onClick={item.onClick}
-                          className="flex w-full items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors text-left"
+                          className={`flex w-full items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors text-left ${
+                            item.isActive
+                              ? "bg-[#c97d4a]/10 text-[#c97d4a]"
+                              : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                          }`}
                         >
                           <item.icon className="h-5 w-5" />
                           {item.label}
@@ -122,7 +149,7 @@ export default function Navbar() {
                       );
                     }
 
-                    // ለሌሎች አዝራሮች መደበኛ Link
+                    // ለሌሎች አዝራሮች መደበኛ Link (Home ን ጨምሮ)
                     const isActive = pathname === item.href;
                     return (
                       <Link

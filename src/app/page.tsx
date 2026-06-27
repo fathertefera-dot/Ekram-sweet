@@ -10,7 +10,6 @@ import { getFeaturedProducts } from "@/actions/products";
 import { getCategories } from "@/actions/categories";
 import { getSettings } from "@/actions/settings";
 import { formatPrice } from "@/lib/utils";
-import FeaturedProductsWithQuickView from "@/components/public/featured-products-with-quickview";
 
 export default async function HomePage() {
   const [banners, featuredProducts, categories, settings] = await Promise.all([
@@ -116,7 +115,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Featured Products Section with Quick View */}
+      {/* Featured Products Section - Clean Version */}
       <section className="py-16 md:py-24 bg-gradient-to-b from-stone-50 to-background">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12 md:mb-16">
@@ -131,7 +130,54 @@ export default async function HomePage() {
             </p>
           </div>
 
-          <FeaturedProductsWithQuickView products={featuredProducts} />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
+            {featuredProducts.map((product) => (
+              <Link key={product.id} href={`/products/${product.slug}`} className="group block">
+                <Card className="relative overflow-hidden rounded-3xl border-0 shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 h-full">
+                  <div className="relative aspect-square overflow-hidden bg-gray-100">
+                    {product.images && product.images[0] ? (
+                      <Image
+                        src={product.images[0].image_url}
+                        alt={product.name}
+                        fill
+                        className="object-cover transition-transform duration-700 group-hover:scale-110"
+                      />
+                    ) : (
+                      <div className="flex items-center justify-center h-full">
+                        <ShoppingBag className="h-16 w-16 text-muted" />
+                      </div>
+                    )}
+                    {product.availability === "pre-order" && (
+                      <Badge className="absolute top-4 left-4 bg-amber-500 text-white text-xs px-3 py-1 rounded-full shadow-md">
+                        Pre-Order
+                      </Badge>
+                    )}
+                  </div>
+
+                  <CardContent className="p-5 md:p-6">
+                    <div className="mb-2">
+                      <Badge variant="secondary" className="text-xs font-normal">
+                        {product.category?.name}
+                      </Badge>
+                    </div>
+                    <h3 className="font-semibold text-base md:text-lg mb-1 group-hover:text-[#c97d4a] transition-colors line-clamp-1">
+                      {product.name}
+                    </h3>
+                    <p className="text-xs text-muted-foreground line-clamp-2 mb-4">
+                      {product.description || "Premium quality product"}
+                    </p>
+                    <div className="flex items-center justify-end pt-2">
+                      <div className="text-lg md:text-xl font-bold text-[#c97d4a]">
+                        {product.variants && product.variants[0]
+                          ? formatPrice(Number(product.variants[0].price))
+                          : "ETB 0"}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            ))}
+          </div>
 
           <div className="mt-8 text-center sm:hidden">
             <Link href="/products">

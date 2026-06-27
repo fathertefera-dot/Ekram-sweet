@@ -9,9 +9,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { formatPrice } from "@/lib/utils";
+import type { Product } from "@/types";
 
-export default function FeaturedProductsWithQuickView({ products }) {
-  const [quickViewProduct, setQuickViewProduct] = useState(null);
+interface FeaturedProductsWithQuickViewProps {
+  products: Product[];
+}
+
+export default function FeaturedProductsWithQuickView({ products }: FeaturedProductsWithQuickViewProps) {
+  const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
 
   return (
     <>

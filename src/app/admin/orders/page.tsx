@@ -23,6 +23,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { getAllOrders, updateOrderStatus, cancelOrder } from "@/actions/orders";
 import { formatPrice } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 import type { Order, OrderStatus } from "@/types";
 
 const statusOptions: OrderStatus[] = ["pending", "confirmed", "preparing", "delivered", "cancelled"];
@@ -40,6 +41,7 @@ export default function AdminOrdersPage() {
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
+  const { toast } = useToast();
 
   const loadOrders = useCallback(async () => {
     setLoading(true);
@@ -55,10 +57,15 @@ export default function AdminOrdersPage() {
       setTotalPages(result.totalPages);
     } catch (error) {
       console.error("Failed to load orders:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load orders.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
-  }, [currentPage, search, statusFilter]);
+  }, [currentPage, search, statusFilter, toast]);
 
   useEffect(() => {
     loadOrders();
@@ -74,6 +81,11 @@ export default function AdminOrdersPage() {
       }
     } catch (error) {
       console.error("Failed to update status:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update order status.",
+        variant: "destructive",
+      });
     } finally {
       setActionLoading(false);
     }
@@ -91,6 +103,11 @@ export default function AdminOrdersPage() {
       setDetailOpen(false);
     } catch (error) {
       console.error("Failed to cancel order:", error);
+      toast({
+        title: "Error",
+        description: "Failed to cancel the order.",
+        variant: "destructive",
+      });
     } finally {
       setActionLoading(false);
     }

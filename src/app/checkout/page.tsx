@@ -18,7 +18,11 @@ import { getActivePaymentMethods } from "@/actions/settings";
 import { clearCart } from "@/actions/cart";
 import { formatPrice } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { checkoutSchema, type CheckoutInput } from "@/lib/validations";
 import type { CartWithItems, PaymentMethod } from "@/types";
+
+// 🔧 [Bug Fix #10] - Extract delivery fee to a constant
+const DELIVERY_FEE_ETB = 150;
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -42,10 +46,7 @@ export default function CheckoutPage() {
 
   const loadData = useCallback(async () => {
     try {
-      const [cartData, methods] = await Promise.all([
-        getCart(),
-        getActivePaymentMethods(),
-      ]);
+      const [cartData, methods] = await Promise.all([getCart(), getActivePaymentMethods()]);
       setCart(cartData);
       setPaymentMethods(methods);
 
@@ -64,27 +65,24 @@ export default function CheckoutPage() {
     loadData();
   }, [loadData]);
 
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {};
-
-    if (!formData.customer_name.trim() || formData.customer_name.length < 2) {
-      newErrors.customer_name = "Full name is required";
-    }
-    if (!formData.customer_phone.trim() || formData.customer_phone.length < 10) {
-      newErrors.customer_phone = "Valid phone number is required";
-    }
-    if (!formData.delivery_address.trim() || formData.delivery_address.length < 5) {
-      newErrors.delivery_address = "Delivery address is required";
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!validateForm() || !cart?.items) return;
+    // 🔧 [Bug Fix #9] - Use Zod schema for validation
+    const validation = checkoutSchema.safeParse(formData);
+    if (!validation.success) {
+      const newErrors: Record<string, string> = {};
+      validation.error.errors.forEach((err) => {
+        if (err.path[0]) newErrors[err.path[0] as string] = err.message;
+      });
+      setErrors(newErrors);
+      return;
+    }
+
+    // We need to check errors here instead of inline if
+    setErrors({});
+
+    if (!cart?.items) return;
 
     setSubmitting(true);
     try {
@@ -102,9 +100,7 @@ export default function CheckoutPage() {
         cake_message: item.cake_message || undefined,
       }));
 
-      const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-      const deliveryFee = 150;
-
+      // 🔧 [Bug Fix #3] - Server will recalculate total_amount; we don't pass it here
       const order = await createOrder({
         customer_name: formData.customer_name,
         customer_phone: formData.customer_phone,
@@ -113,7 +109,6 @@ export default function CheckoutPage() {
         order_note: formData.order_note || undefined,
         payment_method: formData.payment_method,
         items,
-        total_amount: subtotal + deliveryFee,
       });
 
       await clearCart();
@@ -150,7 +145,7 @@ export default function CheckoutPage() {
     return sum + price * item.quantity;
   }, 0) || 0;
 
-  const deliveryFee = subtotal > 0 ? 150 : 0;
+  const deliveryFee = subtotal > 0 ? DELIVERY_FEE_ETB : 0; // Reuse constant
   const total = subtotal + deliveryFee;
 
   return (
@@ -181,15 +176,11 @@ export default function CheckoutPage() {
                       <Input
                         id="customer_name"
                         value={formData.customer_name}
-                        onChange={(e) =>
-                          setFormData({ ...formData, customer_name: e.target.value })
-                        }
+                        onChange={(e) => setFormData({ ...formData, customer_name: e.target.value })}
                         placeholder="Enter your full name"
                         className={errors.customer_name ? "border-red-500" : ""}
                       />
-                      {errors.customer_name && (
-                        <p className="text-xs text-red-500">{errors.customer_name}</p>
-                      )}
+                      {errors.customer_name && <p className="text-xs text-red-500">{errors.customer_name}</p>}
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="customer_phone">
@@ -198,15 +189,11 @@ export default function CheckoutPage() {
                       <Input
                         id="customer_phone"
                         value={formData.customer_phone}
-                        onChange={(e) =>
-                          setFormData({ ...formData, customer_phone: e.target.value })
-                        }
+                        onChange={(e) => setFormData({ ...formData, customer_phone: e.target.value })}
                         placeholder="+251 XXX XXX XXX"
                         className={errors.customer_phone ? "border-red-500" : ""}
                       />
-                      {errors.customer_phone && (
-                        <p className="text-xs text-red-500">{errors.customer_phone}</p>
-                      )}
+                      {errors.customer_phone && <p className="text-xs text-red-500">{errors.customer_phone}</p>}
                     </div>
                     <div className="space-y-2 md:col-span-2">
                       <Label htmlFor="customer_email">Email (Optional)</Label>
@@ -214,9 +201,7 @@ export default function CheckoutPage() {
                         id="customer_email"
                         type="email"
                         value={formData.customer_email}
-                        onChange={(e) =>
-                          setFormData({ ...formData, customer_email: e.target.value })
-                        }
+                        onChange={(e) => setFormData({ ...formData, customer_email: e.target.value })}
                         placeholder="your@email.com"
                       />
                     </div>
@@ -235,25 +220,19 @@ export default function CheckoutPage() {
                       <Textarea
                         id="delivery_address"
                         value={formData.delivery_address}
-                        onChange={(e) =>
-                          setFormData({ ...formData, delivery_address: e.target.value })
-                        }
+                        onChange={(e) => setFormData({ ...formData, delivery_address: e.target.value })}
                         placeholder="Enter your full delivery address"
                         rows={3}
                         className={errors.delivery_address ? "border-red-500" : ""}
                       />
-                      {errors.delivery_address && (
-                        <p className="text-xs text-red-500">{errors.delivery_address}</p>
-                      )}
+                      {errors.delivery_address && <p className="text-xs text-red-500">{errors.delivery_address}</p>}
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="order_note">Order Note (Optional)</Label>
                       <Textarea
                         id="order_note"
                         value={formData.order_note}
-                        onChange={(e) =>
-                          setFormData({ ...formData, order_note: e.target.value })
-                        }
+                        onChange={(e) => setFormData({ ...formData, order_note: e.target.value })}
                         placeholder="Any special instructions..."
                         rows={2}
                       />
@@ -267,9 +246,7 @@ export default function CheckoutPage() {
                   <h2 className="text-lg font-semibold mb-4">Payment Method</h2>
                   <RadioGroup
                     value={formData.payment_method}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, payment_method: value as PaymentMethod })
-                    }
+                    onValueChange={(value) => setFormData({ ...formData, payment_method: value as PaymentMethod })}
                     className="space-y-3"
                   >
                     {paymentMethods.includes("cash_on_delivery") && (
@@ -319,7 +296,6 @@ export default function CheckoutPage() {
                 <CardContent className="p-6">
                   <h2 className="text-lg font-semibold mb-4">Order Summary</h2>
 
-                  {/* Items */}
                   <div className="space-y-3 mb-4 max-h-60 overflow-y-auto">
                     {cart?.items?.map((item) => {
                       const price = item.variant?.price
@@ -332,14 +308,10 @@ export default function CheckoutPage() {
                         <div key={item.id} className="flex justify-between text-sm">
                           <div className="flex-1 min-w-0">
                             <p className="truncate font-medium">{item.product.name}</p>
-                            {item.variant && (
-                              <p className="text-xs text-muted-foreground">{item.variant.name}</p>
-                            )}
+                            {item.variant && <p className="text-xs text-muted-foreground">{item.variant.name}</p>}
                             <p className="text-xs text-muted-foreground">x{item.quantity}</p>
                           </div>
-                          <span className="font-medium ml-2">
-                            {formatPrice(price * item.quantity)}
-                          </span>
+                          <span className="font-medium ml-2">{formatPrice(price * item.quantity)}</span>
                         </div>
                       );
                     })}

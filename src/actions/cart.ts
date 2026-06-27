@@ -10,17 +10,18 @@ function generateSessionId(): string {
   return "sess_" + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
 }
 
-// 🔧 የ RLS ፖሊሲው እንዲሰራ የ 'app.session_id' ን በ PostgreSQL ውስጥ እናስቀምጣለን
+// 🔧 አሁን RLS ን በማይጋጭ መልኩ ሴሽኑን እናስቀምጣለን
 async function setSessionConfig(supabase: SupabaseClient, sessionId: string) {
   try {
-    await supabase.rpc('set_config', {
-      variable: 'app.session_id',
-      value: sessionId,
-      is_local: true
+    // አዲሱን የ RPC ተግባር እንጠቀማለን
+    const { error } = await supabase.rpc('set_app_session_id', {
+      session_id: sessionId
     });
+    if (error) {
+      console.error("RPC Error setting session ID:", error);
+    }
   } catch (error) {
     console.error("Failed to set app.session_id config:", error);
-    // ይህ ስህተት የካርት ስራውን አያቆምም፣ ነገር ግን የ RLS ፍተሻው እንዲሳካ እንሞክራለን
   }
 }
 

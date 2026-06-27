@@ -50,7 +50,7 @@ export default function Navbar() {
     loadData();
   }, [pathname]);
 
-  // Categories scroll & active state
+  // Categories scroll & active state logic
   useEffect(() => {
     if (pathname === "/") {
       const navigateToCategories = sessionStorage.getItem("navigateToCategories");
@@ -75,7 +75,7 @@ export default function Navbar() {
     router.push("/");
   };
 
-  // Menu items grouped
+  // Menu items grouped (እንደ ፎቶው በቡድን ተከፍለዋል)
   const shopItems = [
     { href: "/", label: "Home", icon: Home },
     { href: "/#categories", label: "Categories", icon: Layers, onClick: handleCategoriesClick },
@@ -102,7 +102,23 @@ export default function Navbar() {
     { href: "/contact", label: "Contact" },
   ];
 
-  const renderNavItem = (item: any, isActive: boolean, isButton = false) => {
+  // ✅ ንቁ ሁኔታን (Active state) ለማስተናገድ አስተማማኝ አመክንዮ
+  const resolveIsActive = (item: { href?: string; label: string }) => {
+    if (item.label === "Categories") {
+      return isCategoriesActive;
+    }
+    if (item.href === "/") {
+      // Home ንቁ የሚሆነው Categories ንቁ ካልሆነ ብቻ ነው!
+      return pathname === "/" && !isCategoriesActive;
+    }
+    return pathname === item.href;
+  };
+
+  const renderNavItem = (
+    item: { href?: string; label: string; icon: React.ElementType; onClick?: () => void },
+    isActive: boolean,
+    isButton = false
+  ) => {
     const commonClasses = `flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
       isActive
         ? "bg-[#c97d4a]/10 text-[#c97d4a] border-l-4 border-[#c97d4a]"
@@ -110,23 +126,14 @@ export default function Navbar() {
     }`;
     if (isButton) {
       return (
-        <button
-          key={item.label}
-          onClick={item.onClick}
-          className={commonClasses}
-        >
+        <button key={item.label} onClick={item.onClick} className={commonClasses}>
           <item.icon className="h-5 w-5" />
           {item.label}
         </button>
       );
     }
     return (
-      <Link
-        key={item.href}
-        href={item.href}
-        onClick={() => setMobileMenuOpen(false)}
-        className={commonClasses}
-      >
+      <Link key={item.href} href={item.href!} onClick={() => setMobileMenuOpen(false)} className={commonClasses}>
         <item.icon className="h-5 w-5" />
         {item.label}
       </Link>
@@ -152,7 +159,7 @@ export default function Navbar() {
               side="left"
               className="w-[300px] sm:w-[340px] shadow-2xl border-0 bg-background p-0"
             >
-              {/* Sidebar Header */}
+              {/* Sidebar Header - Gradient Background */}
               <div className="bg-gradient-to-r from-[#c97d4a] to-[#e8a06b] p-6">
                 <div className="flex items-center gap-3">
                   <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm">
@@ -165,7 +172,7 @@ export default function Navbar() {
                 </div>
               </div>
 
-              {/* Quick Actions Cards */}
+              {/* Quick Actions Cards (Grid 2 columns) */}
               <div className="grid grid-cols-2 gap-3 p-4">
                 <Link
                   href="/products"
@@ -199,14 +206,8 @@ export default function Navbar() {
                   </h3>
                   <div className="space-y-1">
                     {shopItems.map((item) => {
-                      const isActive =
-                        item.label === "Categories"
-                          ? isCategoriesActive
-                          : pathname === item.href;
-                      if (item.onClick) {
-                        return renderNavItem(item, isActive, true);
-                      }
-                      return renderNavItem(item, isActive);
+                      const isActive = resolveIsActive(item);
+                      return renderNavItem(item, isActive, !!item.onClick);
                     })}
                   </div>
                 </div>
@@ -232,10 +233,7 @@ export default function Navbar() {
                   <div className="space-y-1">
                     {accountItems.map((item) => {
                       const isActive = pathname === item.href;
-                      if (item.onClick) {
-                        return renderNavItem(item, isActive, true);
-                      }
-                      return renderNavItem(item, isActive);
+                      return renderNavItem(item, isActive, !!item.onClick);
                     })}
                   </div>
                 </div>

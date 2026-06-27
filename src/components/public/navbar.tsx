@@ -33,8 +33,6 @@ export default function Navbar() {
   const [user, setUser] = useState<Awaited<ReturnType<typeof getCurrentUser>>>(null);
   const [admin, setAdmin] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  
-  // ለ "Categories" ተጨማሪ የንቁ ሁኔታ (state)
   const [isCategoriesActive, setIsCategoriesActive] = useState(false);
 
   useEffect(() => {
@@ -51,13 +49,11 @@ export default function Navbar() {
     loadData();
   }, [pathname]);
 
-  // ገጹ ሲቀየር ወይም ሲጫን የ"Categories" ንቁ ሁኔታን እንደገና እናስተካክላለን
+  // ገጹ ሲቀየር የ"Categories" ንቁ ሁኔታን እንደገና እናስተካክላለን
   useEffect(() => {
-    // ከ "Categories" ግጭት በኋላ ወደ ሌላ ገጽ ከሄድን ሁኔታውን ወደ false እናመጣለን
     if (pathname !== "/") {
       setIsCategoriesActive(false);
     } else {
-      // በቤት ገጽ ላይ ከሆንን፣ hash ን እንፈትሻለን
       const hash = window.location.hash;
       if (hash === "#categories") {
         setIsCategoriesActive(true);
@@ -67,18 +63,16 @@ export default function Navbar() {
     }
   }, [pathname]);
 
-  // "Categories" ን ለመጫን የሚረዳ ተግባር (ለመዝለል scrollIntoView ይጠቀማል)
+  // "Categories" ን ለመጫን የሚረዳ ተግባር
   const handleCategoriesClick = () => {
     setMobileMenuOpen(false);
     
     if (pathname === "/") {
-      // ቀድሞውንም በቤት ገጽ ላይ ከሆንን ወዲያውኑ ዘልለን
       setIsCategoriesActive(true);
       setTimeout(() => {
         document.getElementById("categories")?.scrollIntoView({ behavior: "smooth" });
       }, 100);
     } else {
-      // ወደ ቤት ገጽ ሄደን ከተጫነ በኋላ ዘልለን
       router.push("/");
       setTimeout(() => {
         setIsCategoriesActive(true);
@@ -93,7 +87,7 @@ export default function Navbar() {
       label: "Categories", 
       icon: Layers, 
       onClick: handleCategoriesClick,
-      isActive: isCategoriesActive // ልዩ የንቁ ሁኔታ
+      isActive: isCategoriesActive 
     },
     { href: "/cart", label: "Cart", icon: ShoppingCart },
     { href: "/track-order", label: "Track Order", icon: Truck },
@@ -131,7 +125,7 @@ export default function Navbar() {
 
                 <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
                   {menuItems.map((item) => {
-                    // ለ "Categories" ልዩ የሆነ አሰራር (onClick እና isActive)
+                    // ለ "Categories" ልዩ አሰራር
                     if (item.label === "Categories") {
                       return (
                         <button
@@ -149,8 +143,15 @@ export default function Navbar() {
                       );
                     }
 
-                    // ለሌሎች አዝራሮች መደበኛ Link (Home ን ጨምሮ)
-                    const isActive = pathname === item.href;
+                    // ለሌሎቹ መደበኛ Link - "Home" ን ለመከላከል ልዩ ሁኔታ ተጨምሯል
+                    let isActive = false;
+                    if (item.label === "Home") {
+                      // "Home" የሚደምቀው "Categories" ንቁ ካልሆነ ብቻ ነው!
+                      isActive = pathname === "/" && !isCategoriesActive;
+                    } else {
+                      isActive = pathname === item.href;
+                    }
+
                     return (
                       <Link
                         key={item.href}

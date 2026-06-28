@@ -101,7 +101,7 @@ export async function isAdmin(): Promise<boolean> {
   // Try JWT claim first (zero extra DB call)
   try {
     const payload = JSON.parse(
-      Buffer.from(session.access_token.split(".")[1], "base64").toString()
+      atob(session.access_token.split(".")[1])
     );
     if (payload?.user_role !== undefined) {
       return payload.user_role === "admin";

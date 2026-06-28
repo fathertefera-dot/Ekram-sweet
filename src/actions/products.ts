@@ -1,185 +1,305 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
-import type { Product } from "@/types";
+import type { Order, OrderStatus, PaymentMethod } from "@/types";
 import { isAdmin } from "./auth";
 
-export async function getProducts(options: { category?: string; search?: string; page?: number; limit?: number; featured?: boolean } = {}) {
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+type OrderItemInput = {
+  product_id: string;
+  variant_id?: string;
+  variant_name?: string;
+  product_name: string;
+  quantity: number;
+  cake_message?: string;
+};
+
+type TelegramOrderData = {
+  customer_name: string;
+  customer_phone: string;
+  delivery_address: string;
+  payment_method: string;
+  items: {
+    product_name: string;
+    variant_name?: string;
+    quantity: number;
+    price: number;
+    cake_message?: string;
+  }[];
+  total_amount: number;
+};
+
+const DELIVERY_FEE_ETB = 150;
+
+// ---------------------------------------------------------------------------
+// createOrder
+// ---------------------------------------------------------------------------
+
+export async function createOrder(data: {
+  customer_name: string;
+  customer_phone: string;
+  customer_email?: string;
+  delivery_address: string;
+  order_note?: string;
+  payment_method: PaymentMethod;
+  items: OrderItemInput[];
+}) {
   const supabase = await createClient();
-  const { category, search, page = 1, limit = 12, featured } = options;
+  const admin = createAdminClient();
+
+  // ── [Fix: Critical 1] Fetch real prices from DB — never trust the client ──
+  const variantIds = data.items
+    .map((i) => i.variant_id)
+    .filter((id): id is string => Boolean(id));
+
+  const { data: variants, error: variantFetchError } = await admin
+    .from("product_variants")
+    .select("id, price")
+    .in("id", variantIds);
+
+  if (variantFetchError) throw variantFetchError;
+
+  const priceMap = new Map(
+    (variants ?? []).map((v) => [v.id, Number(v.price)])
+  );
+
+  // Build verified items — price comes exclusively from the DB
+  const verifiedItems = data.items.map((item) => {
+    const realPrice = item.variant_id ? (priceMap.get(item.variant_id) ?? 0) : 0;
+    return { ...item, price: realPrice };
+  });
+
+  const subtotal = verifiedItems.reduce(
+    (sum, item) => sum + item.price * item.quantity,
+    0
+  );
+  const totalAmount = subtotal + DELIVERY_FEE_ETB;
+
+  // ── [Fix: Medium 2] Collision-resistant order number ──
+  const suffix = Math.random().toString(36).substring(2, 5).toUpperCase();
+  const orderNumber = `IKU-${Date.now().toString().slice(-6)}${suffix}`;
+
+  // Create the order row
+  const { data: order, error: orderError } = await supabase
+    .from("orders")
+    .insert({
+      order_number: orderNumber,
+      customer_name: data.customer_name,
+      customer_phone: data.customer_phone,
+      customer_email: data.customer_email || null,
+      delivery_address: data.delivery_address,
+      order_note: data.order_note || null,
+      payment_method: data.payment_method,
+      total_amount: totalAmount,
+    })
+    .select()
+    .single();
+
+  if (orderError) throw orderError;
+
+  // Insert order items using server-verified prices
+  const orderItems = verifiedItems.map((item) => ({
+    order_id: order.id,
+    product_id: item.product_id,
+    variant_id: item.variant_id || null,
+    product_name: item.product_name,
+    variant_name: item.variant_name || null,
+    price: item.price,
+    quantity: item.quantity,
+    cake_message: item.cake_message || null,
+  }));
+
+  const { error: itemsError } = await supabase
+    .from("order_items")
+    .insert(orderItems);
+
+  if (itemsError) throw itemsError;
+
+  // Fire-and-forget Telegram notification
+  sendTelegramNotification(orderNumber, {
+    customer_name: data.customer_name,
+    customer_phone: data.customer_phone,
+    delivery_address: data.delivery_address,
+    payment_method: data.payment_method,
+    items: verifiedItems,
+    total_amount: totalAmount,
+  });
+
+  revalidatePath("/admin/orders");
+  return order as Order;
+}
+
+// ---------------------------------------------------------------------------
+// Telegram helper  [Fix: Medium 2 — proper type, no `any`]
+// ---------------------------------------------------------------------------
+
+async function sendTelegramNotification(
+  orderNumber: string,
+  data: TelegramOrderData
+) {
+  try {
+    const botToken = process.env.TELEGRAM_BOT_TOKEN;
+    const chatId = process.env.TELEGRAM_CHAT_ID;
+    if (!botToken || !chatId) return;
+
+    const itemsList = data.items
+      .map(
+        (item) =>
+          `- ${item.product_name}${item.variant_name ? ` (${item.variant_name})` : ""} x${item.quantity} = ${item.price * item.quantity} ETB${item.cake_message ? `\n  Message: "${item.cake_message}"` : ""}`
+      )
+      .join("\n");
+
+    const message = `
+🎂 *New Order - ${orderNumber}*
+
+👤 *Customer:* ${data.customer_name}
+📱 *Phone:* ${data.customer_phone}
+📍 *Address:* ${data.delivery_address}
+💳 *Payment:* ${data.payment_method.replace(/_/g, " ").toUpperCase()}
+
+🛒 *Items:*
+${itemsList}
+
+💰 *Total:* ${data.total_amount} ETB
+    `.trim();
+
+    await fetch(
+      `https://api.telegram.org/bot${botToken}/sendMessage`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text: message,
+          parse_mode: "Markdown",
+        }),
+      }
+    );
+  } catch {
+    // Silently fail — must never block order creation
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Public — order tracking
+// ---------------------------------------------------------------------------
+
+export async function trackOrder(
+  orderNumber: string,
+  phoneNumber: string
+): Promise<Order | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("orders")
+    .select("*, items:order_items(*)")
+    .eq("order_number", orderNumber)
+    .eq("customer_phone", phoneNumber)
+    .single();
+
+  if (error) return null;
+  return data as Order;
+}
+
+// ---------------------------------------------------------------------------
+// Admin — orders
+// ---------------------------------------------------------------------------
+
+export async function getAllOrders(
+  options: {
+    page?: number;
+    limit?: number;
+    status?: OrderStatus;
+    search?: string;
+  } = {}
+) {
+  if (!(await isAdmin())) throw new Error("Unauthorized");
+
+  const supabase = await createClient();
+  const { page = 1, limit = 10, status, search } = options;
 
   let query = supabase
-    .from("products")
-    .select("*, category:categories(*), images:product_images(*), variants:product_variants(*)", { count: "exact" })
-    .eq("status", "active");
+    .from("orders")
+    .select("*, items:order_items(*)", { count: "exact" });
 
-  if (category) query = query.eq("category_id", category);
-  if (search) query = query.ilike("name", `%${search}%`);
-  if (featured) query = query.eq("featured", true);
-
-  const from = (page - 1) * limit;
-  const to = from + limit - 1;
-
-  const { data, error, count } = await query.order("created_at", { ascending: false }).range(from, to);
-  if (error) throw error;
-
-  return { products: data as Product[] || [], total: count || 0, totalPages: Math.ceil((count || 0) / limit), currentPage: page };
-}
-
-export async function getProductBySlug(slug: string): Promise<Product | null> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("products")
-    .select("*, category:categories(*), images:product_images(*), variants:product_variants(*)")
-    .eq("slug", slug)
-    .eq("status", "active")
-    .single();
-
-  if (error) return null;
-  return data as Product;
-}
-
-export async function getProductById(id: string): Promise<Product | null> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("products")
-    .select("*, category:categories(*), images:product_images(*), variants:product_variants(*)")
-    .eq("id", id)
-    .single();
-
-  if (error) return null;
-  return data as Product;
-}
-
-export async function getFeaturedProducts(): Promise<Product[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("products")
-    .select("*, category:categories(*), images:product_images(*), variants:product_variants(*)")
-    .eq("status", "active")
-    .eq("featured", true)
-    .order("created_at", { ascending: false })
-    .limit(8);
-
-  if (error) throw error;
-  return data as Product[] || [];
-}
-
-// Admin: Get all products
-export async function getAllProducts(options: { page?: number; limit?: number; search?: string; status?: string } = {}) {
-  // 🔧 [Bug Fix #5] - Admin authorization check
-  if (!(await isAdmin())) throw new Error("Unauthorized");
-
-  const supabase = await createClient();
-  const { page = 1, limit = 10, search, status } = options;
-
-  let query = supabase.from("products").select("*, category:categories(*), images:product_images(*), variants:product_variants(*)", { count: "exact" });
-  if (search) query = query.ilike("name", `%${search}%`);
   if (status) query = query.eq("status", status);
+  if (search)
+    query = query.or(
+      `order_number.ilike.%${search}%,customer_name.ilike.%${search}%,customer_phone.ilike.%${search}%`
+    );
 
   const from = (page - 1) * limit;
   const to = from + limit - 1;
 
-  const { data, error, count } = await query.order("created_at", { ascending: false }).range(from, to);
+  const { data, error, count } = await query
+    .order("created_at", { ascending: false })
+    .range(from, to);
+
   if (error) throw error;
 
-  return { products: data as Product[] || [], total: count || 0, totalPages: Math.ceil((count || 0) / limit), currentPage: page };
+  return {
+    orders: (data as Order[]) || [],
+    total: count || 0,
+    totalPages: Math.ceil((count || 0) / limit),
+    currentPage: page,
+  };
 }
 
-// Admin: Create product
-export async function createProduct(formData: FormData) {
-  // 🔧 [Bug Fix #5] - Admin authorization check
+export async function updateOrderStatus(orderId: string, status: OrderStatus) {
   if (!(await isAdmin())) throw new Error("Unauthorized");
 
   const supabase = await createClient();
+  const { error } = await supabase
+    .from("orders")
+    .update({ status })
+    .eq("id", orderId);
 
-  const name = formData.get("name") as string;
-  const slug = formData.get("slug") as string;
-  const description = formData.get("description") as string;
-  const category_id = formData.get("category_id") as string;
-  const availability = formData.get("availability") as string;
-  const featured = formData.get("featured") === "true";
-  const status = formData.get("status") as string;
-  const meta_title = formData.get("meta_title") as string;
-  const meta_description = formData.get("meta_description") as string;
-  const images = JSON.parse(formData.get("images") as string) as string[];
-  const variants = JSON.parse(formData.get("variants") as string) as { name: string; price: number }[];
-
-  // Create product
-  const { data: product, error: productError } = await supabase.from("products").insert({ name, slug, description, category_id, availability, featured, status, meta_title, meta_description }).select().single();
-  if (productError) throw productError;
-
-  // Insert images
-  if (images.length > 0) {
-    const imageInserts = images.map((url, index) => ({ product_id: product.id, image_url: url, sort_order: index }));
-    const { error: imagesError } = await supabase.from("product_images").insert(imageInserts);
-    if (imagesError) throw imagesError;
-  }
-
-  // Insert variants
-  if (variants.length > 0) {
-    const variantInserts = variants.map((v) => ({ product_id: product.id, name: v.name, price: v.price }));
-    const { error: variantsError } = await supabase.from("product_variants").insert(variantInserts);
-    if (variantsError) throw variantsError;
-  }
-
-  revalidatePath("/admin/products");
-  revalidatePath("/products");
-  return product;
-}
-
-// Admin: Update product (Atomic update with Upsert)
-export async function updateProduct(id: string, formData: FormData) {
-  // 🔧 [Bug Fix #5] - Admin authorization check
-  if (!(await isAdmin())) throw new Error("Unauthorized");
-
-  const supabase = await createClient();
-
-  const name = formData.get("name") as string;
-  const slug = formData.get("slug") as string;
-  const description = formData.get("description") as string;
-  const category_id = formData.get("category_id") as string;
-  const availability = formData.get("availability") as string;
-  const featured = formData.get("featured") === "true";
-  const status = formData.get("status") as string;
-  const meta_title = formData.get("meta_title") as string;
-  const meta_description = formData.get("meta_description") as string;
-  const images = JSON.parse(formData.get("images") as string) as string[];
-  const variants = JSON.parse(formData.get("variants") as string) as { name: string; price: number }[];
-
-  // 🔧 [Bug Fix #4] - Use Upsert to prevent data loss on failure
-  const { error: productError } = await supabase.from("products").update({ name, slug, description, category_id, availability, featured, status, meta_title, meta_description }).eq("id", id);
-  if (productError) throw productError;
-
-  // Upsert images (Conflict on product_id & sort_order)
-  if (images.length > 0) {
-    const imageInserts = images.map((url, index) => ({ product_id: id, image_url: url, sort_order: index }));
-    const { error: imagesError } = await supabase.from("product_images").upsert(imageInserts, { onConflict: "product_id, sort_order" });
-    if (imagesError) throw imagesError;
-  }
-
-  // Upsert variants (Conflict on product_id & name)
-  if (variants.length > 0) {
-    const variantInserts = variants.map((v) => ({ product_id: id, name: v.name, price: v.price }));
-    const { error: variantsError } = await supabase.from("product_variants").upsert(variantInserts, { onConflict: "product_id, name" });
-    if (variantsError) throw variantsError;
-  }
-
-  revalidatePath("/admin/products");
-  revalidatePath("/products");
-  revalidatePath(`/products/${slug}`);
-}
-
-// Admin: Delete product
-export async function deleteProduct(id: string) {
-  // 🔧 [Bug Fix #5] - Admin authorization check
-  if (!(await isAdmin())) throw new Error("Unauthorized");
-
-  const supabase = await createClient();
-  const { error } = await supabase.from("products").delete().eq("id", id);
   if (error) throw error;
-
-  revalidatePath("/admin/products");
-  revalidatePath("/products");
+  revalidatePath("/admin/orders");
 }
+
+export async function cancelOrder(orderId: string, reason: string) {
+  if (!(await isAdmin())) throw new Error("Unauthorized");
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("orders")
+    .update({ status: "cancelled", cancel_reason: reason })
+    .eq("id", orderId);
+
+  if (error) throw error;
+  revalidatePath("/admin/orders");
+}
+
+export async function getOrderStats() {
+  const supabase = await createClient();
+
+  const [
+    { count: totalOrders },
+    { count: pendingOrders },
+    { count: deliveredOrders },
+    { count: totalProducts },
+  ] = await Promise.all([
+    supabase.from("orders").select("*", { count: "exact", head: true }),
+    supabase
+      .from("orders")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "pending"),
+    supabase
+      .from("orders")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "delivered"),
+    supabase.from("products").select("*", { count: "exact", head: true }),
+  ]);
+
+  return {
+    totalOrders: totalOrders ?? 0,
+    pendingOrders: pendingOrders ?? 0,
+    deliveredOrders: deliveredOrders ?? 0,
+    totalProducts: totalProducts ?? 0,
+  };
+    }

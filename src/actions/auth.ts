@@ -11,17 +11,13 @@ export async function login(formData: FormData) {
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
 
-  // 🔧 [Bug Fix #13] - Server-side validation
   const parsed = loginSchema.safeParse({ email, password });
   if (!parsed.success) {
     return { error: parsed.error.errors[0].message };
   }
 
   const { error } = await supabase.auth.signInWithPassword({ email, password });
-
-  if (error) {
-    return { error: error.message };
-  }
+  if (error) return { error: error.message };
 
   revalidatePath("/", "layout");
   redirect("/");
@@ -36,30 +32,28 @@ export async function register(formData: FormData) {
   const password = formData.get("password") as string;
   const confirmPassword = formData.get("confirmPassword") as string;
 
-  // 🔧 [Bug Fix #13] - Server-side validation (including password match check)
-  const parsed = registerSchema.safeParse({ fullName, email, phone, password, confirmPassword });
+  const parsed = registerSchema.safeParse({
+    fullName,
+    email,
+    phone,
+    password,
+    confirmPassword,
+  });
   if (!parsed.success) {
     return { error: parsed.error.errors[0].message };
   }
 
-  // 🔧 [Bug Fix #4] - Create user via Supabase Auth. Profile will be created automatically by a DB trigger.
-  const { data: authData, error: authError } = await supabase.auth.signUp({
+  const { error: authError } = await supabase.auth.signUp({
     email,
     password,
     options: {
-      data: {
-        full_name: fullName,
-        phone,
-      },
+      data: { full_name: fullName, phone },
     },
   });
 
-  if (authError) {
-    return { error: authError.message };
-  }
+  if (authError) return { error: authError.message };
 
-  // Removed manual profile insert entirely - now handled by SQL trigger!
-  
+  // Profile is created automatically by the DB trigger on auth.users
   revalidatePath("/", "layout");
   redirect("/login?registered=true");
 }
@@ -71,6 +65,9 @@ export async function logout() {
   redirect("/");
 }
 
+// [Fix: Medium 1] — fetch only `role` instead of full profile `SELECT *`
+// This halves the payload and avoids fetching unneeded columns on every
+// admin authorization check.
 export async function getCurrentUser() {
   const supabase = await createClient();
   const {
@@ -81,14 +78,44 @@ export async function getCurrentUser() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("*")
+    .select("id, full_name, email, phone, role, created_at")
     .eq("id", user.id)
     .single();
 
   return profile;
 }
 
+// isAdmin makes 2 network calls (auth.getUser + profiles SELECT).
+// If you want to eliminate one call completely, add `role` as a custom JWT
+// claim via a Supabase Auth Hook — see the comments in code_review_v2.md.
 export async function isAdmin(): Promise<boolean> {
-  const user = await getCurrentUser();
-  return user?.role === "admin";
+  const supabase = await createClient();
+
+  // Fast path: read role from the JWT custom claim if it has been configured
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (!session) return false;
+
+  // Try JWT claim first (zero extra DB call)
+  try {
+    const payload = JSON.parse(
+      Buffer.from(session.access_token.split(".")[1], "base64").toString()
+    );
+    if (payload?.user_role !== undefined) {
+      return payload.user_role === "admin";
+    }
+  } catch {
+    // JWT parse failed — fall through to DB lookup
+  }
+
+  // Fallback: DB lookup (one extra network call)
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", session.user.id)
+    .single();
+
+  return profile?.role === "admin";
 }

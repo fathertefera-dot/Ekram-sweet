@@ -1,9 +1,17 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { Search, Plus, Pencil, Trash2, ChevronLeft, ChevronRight, Cake, Loader2, X } from "lucide-react";
+import {
+  Search,
+  Plus,
+  Pencil,
+  Trash2,
+  ChevronLeft,
+  ChevronRight,
+  Cake,
+  Loader2,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,7 +33,13 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
-import { getAllProducts, createProduct, updateProduct, deleteProduct } from "@/actions/products";
+import { useToast } from "@/hooks/use-toast";
+import {
+  getAllProducts,
+  createProduct,
+  updateProduct,
+  deleteProduct,
+} from "@/actions/products";
 import { getAllCategories } from "@/actions/categories";
 import { formatPrice } from "@/lib/utils";
 import type { Product, Category } from "@/types";
@@ -59,7 +73,8 @@ const emptyForm: ProductFormData = {
 };
 
 export default function AdminProductsPage() {
-  const router = useRouter();
+  const { toast } = useToast();
+
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [total, setTotal] = useState(0);
@@ -73,6 +88,7 @@ export default function AdminProductsPage() {
   const [imageUrl, setImageUrl] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const loadProducts = useCallback(async () => {
     setLoading(true);
@@ -87,10 +103,15 @@ export default function AdminProductsPage() {
       setTotalPages(result.totalPages);
     } catch (error) {
       console.error("Failed to load products:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load products. Please refresh.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
-  }, [currentPage, search]);
+  }, [currentPage, search, toast]);
 
   useEffect(() => {
     loadProducts();
@@ -98,8 +119,12 @@ export default function AdminProductsPage() {
   }, [loadProducts]);
 
   async function loadCategories() {
-    const data = await getAllCategories();
-    setCategories(data);
+    try {
+      const data = await getAllCategories();
+      setCategories(data);
+    } catch {
+      // Non-critical — form will have an empty category list
+    }
   }
 
   const openForm = (product?: Product) => {
@@ -116,7 +141,11 @@ export default function AdminProductsPage() {
         meta_title: product.meta_title || "",
         meta_description: product.meta_description || "",
         images: product.images?.map((i) => i.image_url) || [],
-        variants: product.variants?.map((v) => ({ name: v.name, price: Number(v.price) })) || [{ name: "", price: 0 }],
+        variants:
+          product.variants?.map((v) => ({
+            name: v.name,
+            price: Number(v.price),
+          })) || [{ name: "", price: 0 }],
       });
     } else {
       setEditingProduct(null);
@@ -132,7 +161,14 @@ export default function AdminProductsPage() {
     try {
       const form = new FormData();
       form.append("name", formData.name);
-      form.append("slug", formData.slug || formData.name.toLowerCase().replace(/\s+/g, "-"));
+      form.append(
+        "slug",
+        formData.slug ||
+          formData.name
+            .toLowerCase()
+            .replace(/\s+/g, "-")
+            .replace(/[^a-z0-9-]/g, "")
+      );
       form.append("description", formData.description);
       form.append("category_id", formData.category_id);
       form.append("availability", formData.availability);
@@ -141,12 +177,17 @@ export default function AdminProductsPage() {
       form.append("meta_title", formData.meta_title);
       form.append("meta_description", formData.meta_description);
       form.append("images", JSON.stringify(formData.images));
-      form.append("variants", JSON.stringify(formData.variants.filter((v) => v.name)));
+      form.append(
+        "variants",
+        JSON.stringify(formData.variants.filter((v) => v.name.trim()))
+      );
 
       if (editingProduct) {
         await updateProduct(editingProduct.id, form);
+        toast({ title: "Product updated successfully" });
       } else {
         await createProduct(form);
+        toast({ title: "Product created successfully" });
       }
 
       setFormOpen(false);
@@ -154,18 +195,38 @@ export default function AdminProductsPage() {
       await loadProducts();
     } catch (error) {
       console.error("Failed to save product:", error);
+      toast({
+        title: "Error",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Failed to save product. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleDelete = async (id: string) => {
+    setDeleting(true);
     try {
       await deleteProduct(id);
       setDeleteConfirm(null);
+      toast({ title: "Product deleted successfully" });
       await loadProducts();
     } catch (error) {
       console.error("Failed to delete product:", error);
+      toast({
+        title: "Error",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Failed to delete product. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -177,14 +238,24 @@ export default function AdminProductsPage() {
   };
 
   const removeImage = (index: number) => {
-    setFormData({ ...formData, images: formData.images.filter((_, i) => i !== index) });
+    setFormData({
+      ...formData,
+      images: formData.images.filter((_, i) => i !== index),
+    });
   };
 
   const addVariant = () => {
-    setFormData({ ...formData, variants: [...formData.variants, { name: "", price: 0 }] });
+    setFormData({
+      ...formData,
+      variants: [...formData.variants, { name: "", price: 0 }],
+    });
   };
 
-  const updateVariant = (index: number, field: string, value: string | number) => {
+  const updateVariant = (
+    index: number,
+    field: string,
+    value: string | number
+  ) => {
     const newVariants = [...formData.variants];
     newVariants[index] = { ...newVariants[index], [field]: value };
     setFormData({ ...formData, variants: newVariants });
@@ -192,7 +263,10 @@ export default function AdminProductsPage() {
 
   const removeVariant = (index: number) => {
     if (formData.variants.length > 1) {
-      setFormData({ ...formData, variants: formData.variants.filter((_, i) => i !== index) });
+      setFormData({
+        ...formData,
+        variants: formData.variants.filter((_, i) => i !== index),
+      });
     }
   };
 
@@ -203,7 +277,10 @@ export default function AdminProductsPage() {
           <h1 className="text-2xl font-bold">Products</h1>
           <p className="text-muted-foreground">Manage your cake products</p>
         </div>
-        <Button onClick={() => openForm()} className="bg-[#c97d4a] hover:bg-[#b56d3f] gap-2">
+        <Button
+          onClick={() => openForm()}
+          className="bg-[#c97d4a] hover:bg-[#b56d3f] gap-2"
+        >
           <Plus className="h-4 w-4" /> Add Product
         </Button>
       </div>
@@ -214,7 +291,10 @@ export default function AdminProductsPage() {
         <Input
           placeholder="Search products..."
           value={search}
-          onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setCurrentPage(1);
+          }}
           className="pl-10"
         />
       </div>
@@ -260,7 +340,9 @@ export default function AdminProductsPage() {
                           </div>
                           <div>
                             <p className="font-medium">{product.name}</p>
-                            <p className="text-xs text-muted-foreground">/{product.slug}</p>
+                            <p className="text-xs text-muted-foreground">
+                              /{product.slug}
+                            </p>
                           </div>
                         </div>
                       </td>
@@ -285,7 +367,11 @@ export default function AdminProductsPage() {
                         </Badge>
                       </td>
                       <td className="py-3 px-4 text-right">
-                        <Button variant="ghost" size="sm" onClick={() => openForm(product)}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => openForm(product)}
+                        >
                           <Pencil className="h-4 w-4" />
                         </Button>
                         <Button
@@ -318,11 +404,15 @@ export default function AdminProductsPage() {
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
-                <span className="text-sm">{currentPage} / {totalPages}</span>
+                <span className="text-sm">
+                  {currentPage} / {totalPages}
+                </span>
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  onClick={() =>
+                    setCurrentPage((p) => Math.min(totalPages, p + 1))
+                  }
                   disabled={currentPage === totalPages}
                 >
                   <ChevronRight className="h-4 w-4" />
@@ -337,7 +427,9 @@ export default function AdminProductsPage() {
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingProduct ? "Edit Product" : "Add Product"}</DialogTitle>
+            <DialogTitle>
+              {editingProduct ? "Edit Product" : "Add Product"}
+            </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid md:grid-cols-2 gap-4">
@@ -345,15 +437,19 @@ export default function AdminProductsPage() {
                 <Label>Name *</Label>
                 <Input
                   value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, name: e.target.value })
+                  }
                   required
                 />
               </div>
               <div className="space-y-2">
-                <Label>Slug *</Label>
+                <Label>Slug</Label>
                 <Input
                   value={formData.slug}
-                  onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, slug: e.target.value })
+                  }
                   placeholder="auto-generated-if-empty"
                 />
               </div>
@@ -363,7 +459,9 @@ export default function AdminProductsPage() {
               <Label>Description</Label>
               <Textarea
                 value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, description: e.target.value })
+                }
                 rows={3}
               />
             </div>
@@ -373,14 +471,18 @@ export default function AdminProductsPage() {
                 <Label>Category *</Label>
                 <Select
                   value={formData.category_id}
-                  onValueChange={(v) => setFormData({ ...formData, category_id: v })}
+                  onValueChange={(v) =>
+                    setFormData({ ...formData, category_id: v })
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select category" />
                   </SelectTrigger>
                   <SelectContent>
                     {categories.map((cat) => (
-                      <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                      <SelectItem key={cat.id} value={cat.id}>
+                        {cat.name}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -389,7 +491,9 @@ export default function AdminProductsPage() {
                 <Label>Availability</Label>
                 <Select
                   value={formData.availability}
-                  onValueChange={(v) => setFormData({ ...formData, availability: v })}
+                  onValueChange={(v) =>
+                    setFormData({ ...formData, availability: v })
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -404,7 +508,9 @@ export default function AdminProductsPage() {
                 <Label>Status</Label>
                 <Select
                   value={formData.status}
-                  onValueChange={(v) => setFormData({ ...formData, status: v })}
+                  onValueChange={(v) =>
+                    setFormData({ ...formData, status: v })
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -423,10 +529,14 @@ export default function AdminProductsPage() {
                 type="checkbox"
                 id="featured"
                 checked={formData.featured}
-                onChange={(e) => setFormData({ ...formData, featured: e.target.checked })}
+                onChange={(e) =>
+                  setFormData({ ...formData, featured: e.target.checked })
+                }
                 className="rounded border-gray-300"
               />
-              <Label htmlFor="featured" className="cursor-pointer">Featured on homepage</Label>
+              <Label htmlFor="featured" className="cursor-pointer">
+                Featured on homepage
+              </Label>
             </div>
 
             <Separator />
@@ -439,7 +549,9 @@ export default function AdminProductsPage() {
                   placeholder="Image URL"
                   value={imageUrl}
                   onChange={(e) => setImageUrl(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addImage())}
+                  onKeyDown={(e) =>
+                    e.key === "Enter" && (e.preventDefault(), addImage())
+                  }
                 />
                 <Button type="button" variant="outline" onClick={addImage}>
                   Add
@@ -447,8 +559,15 @@ export default function AdminProductsPage() {
               </div>
               <div className="flex flex-wrap gap-2">
                 {formData.images.map((img, i) => (
-                  <div key={i} className="relative h-16 w-16 rounded-lg overflow-hidden border">
-                    <img src={img} alt="" className="h-full w-full object-cover" />
+                  <div
+                    key={i}
+                    className="relative h-16 w-16 rounded-lg overflow-hidden border"
+                  >
+                    <img
+                      src={img}
+                      alt=""
+                      className="h-full w-full object-cover"
+                    />
                     <button
                       type="button"
                       onClick={() => removeImage(i)}
@@ -472,14 +591,22 @@ export default function AdminProductsPage() {
                     <Input
                       placeholder="Name (e.g., Small, 1KG)"
                       value={variant.name}
-                      onChange={(e) => updateVariant(index, "name", e.target.value)}
+                      onChange={(e) =>
+                        updateVariant(index, "name", e.target.value)
+                      }
                       className="flex-1"
                     />
                     <Input
                       type="number"
                       placeholder="Price"
                       value={variant.price || ""}
-                      onChange={(e) => updateVariant(index, "price", parseFloat(e.target.value) || 0)}
+                      onChange={(e) =>
+                        updateVariant(
+                          index,
+                          "price",
+                          parseFloat(e.target.value) || 0
+                        )
+                      }
                       className="w-28"
                     />
                     <Button
@@ -494,7 +621,13 @@ export default function AdminProductsPage() {
                   </div>
                 ))}
               </div>
-              <Button type="button" variant="outline" size="sm" onClick={addVariant} className="mt-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addVariant}
+                className="mt-2"
+              >
                 Add Variant
               </Button>
             </div>
@@ -507,24 +640,41 @@ export default function AdminProductsPage() {
                 <Label>Meta Title</Label>
                 <Input
                   value={formData.meta_title}
-                  onChange={(e) => setFormData({ ...formData, meta_title: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, meta_title: e.target.value })
+                  }
                 />
               </div>
               <div className="space-y-2">
                 <Label>Meta Description</Label>
                 <Input
                   value={formData.meta_description}
-                  onChange={(e) => setFormData({ ...formData, meta_description: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      meta_description: e.target.value,
+                    })
+                  }
                 />
               </div>
             </div>
 
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setFormOpen(false)}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setFormOpen(false)}
+              >
                 Cancel
               </Button>
-              <Button type="submit" disabled={submitting} className="bg-[#c97d4a] hover:bg-[#b56d3f]">
-                {submitting && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
+              <Button
+                type="submit"
+                disabled={submitting}
+                className="bg-[#c97d4a] hover:bg-[#b56d3f]"
+              >
+                {submitting && (
+                  <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                )}
                 {editingProduct ? "Update" : "Create"}
               </Button>
             </DialogFooter>
@@ -533,19 +683,32 @@ export default function AdminProductsPage() {
       </Dialog>
 
       {/* Delete Confirmation */}
-      <Dialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
+      <Dialog
+        open={!!deleteConfirm}
+        onOpenChange={() => setDeleteConfirm(null)}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Delete Product</DialogTitle>
           </DialogHeader>
           <p className="text-muted-foreground">
-            Are you sure you want to delete this product? This action cannot be undone.
+            Are you sure you want to delete this product? This action cannot be
+            undone.
           </p>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteConfirm(null)}>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteConfirm(null)}
+              disabled={deleting}
+            >
               Cancel
             </Button>
-            <Button variant="destructive" onClick={() => deleteConfirm && handleDelete(deleteConfirm)}>
+            <Button
+              variant="destructive"
+              disabled={deleting}
+              onClick={() => deleteConfirm && handleDelete(deleteConfirm)}
+            >
+              {deleting && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
               Delete
             </Button>
           </DialogFooter>
